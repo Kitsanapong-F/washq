@@ -15,7 +15,7 @@ washq/
 │   │   └── main.jsx          # จุดเริ่มต้นของ React
 │   ├── package.json
 │   └── index.html
-├── backend/                  # ระบบหลังบ้าน (Node.js + Express REST API)
+├── api/                  # ระบบหลังบ้าน (Node.js + Express REST API)
 │   ├── config/               # ไฟล์ตั้งค่า Database / Environment variables
 │   ├── controllers/          # โค้ดจัดการ Logic ของแต่ละ API (เช่น การจองคิว)
 │   ├── models/               # จัดการข้อมูล/ Query กับ Database
