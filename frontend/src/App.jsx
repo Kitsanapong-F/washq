@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-
+import Dashboard from './pages/Dashboard';
 export default function App() {
   return (
     <Router>
@@ -8,7 +8,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<div className="p-8 text-center text-sm font-bold">หน้า Dashboard (กำลังพัฒนา)</div>} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/dashboard" element={<div className="p-8 text-center text-sm font-bold">หน้า Admin Dashboard (กำลังพัฒนา)</div>} />
         </Routes>
       </div>
