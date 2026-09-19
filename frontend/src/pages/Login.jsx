@@ -1,26 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, AlertCircle, Info } from 'lucide-react';
+import { authService } from '../services/authService';
 
 export default function Login() {
   const [role, setRole] = useState('student');
   const [studentCode, setStudentCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!studentCode || !password) {
-      setError('รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+      setError('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
 
+    setLoading(true);
     setError('');
-    if (role === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/dashboard');
+
+    try {
+      // ยิง API ไปที่ Backend /api/auth/login
+      const res = await authService.login(studentCode, password, role);
+
+      // เมื่อสำเร็จให้บันทึกข้อมูลและนำทางตาม Role
+      if (role === 'admin' || res.user?.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      const serverMessage = err.response?.data?.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง';
+      setError(serverMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,7 +44,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
 
-        {/* Banner ด้านข้าง (Desktop Only) */}
+        {/* Banner ด้านข้าง */}
         <div className="bg-[#8B5A2B] text-white p-8 hidden md:flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 bg-amber-100/20 rounded-xl flex items-center justify-center mb-6">
@@ -84,7 +100,7 @@ export default function Login() {
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder={role === 'student' ? 'เช่น 6512345678-9' : 'admin.laundry@rmutl.ac.th'}
+                  placeholder={role === 'student' ? 'เช่น 6512345678-9' : 'admin01'}
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B5A2B]"
@@ -115,9 +131,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#8B5A2B] hover:bg-[#724822] text-white text-xs font-bold rounded-xl transition-all shadow-md"
+              disabled={loading}
+              className="w-full py-2.5 bg-[#8B5A2B] hover:bg-[#724822] text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:bg-slate-400"
             >
-              เข้าสู่ระบบ
+              {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </button>
           </form>
 

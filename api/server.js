@@ -18,6 +18,9 @@ app.use(express.json());
 
 app.set('socketio', io);
 
+app.get('/', (req, res) => {
+  res.json({ message: 'WashQ API Server is running successfully!' });
+});
 // ใช้งาน API Routes
 app.use('/api', apiRoutes);
 
