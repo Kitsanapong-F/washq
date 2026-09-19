@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TimeSlots from './pages/TimeSlots';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminQueue from './pages/AdminQueue';
+
 export default function App() {
   return (
     <Router>
@@ -11,7 +14,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/time-slots/:machineId" element={<TimeSlots />} />
-          <Route path="/admin/dashboard" element={<div className="p-8 text-center text-sm font-bold">หน้า Admin Dashboard (กำลังพัฒนา)</div>} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/queue" element={<AdminQueue />} />
         </Routes>
       </div>
     </Router>
