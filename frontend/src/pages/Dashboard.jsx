@@ -2,33 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
+import io from 'socket.io-client';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [machines, setMachines] = useState([]);
+  const [activeBooking, setActiveBooking] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // จำลองข้อมูล Active Booking (สามารถพัฒนา API รองรับในภายหลัง)
-  const [activeBooking, setActiveBooking] = useState({
-    id: 'BK-001',
-    machineName: 'เครื่องซักผ้า 01',
-    timeSlot: 'วันนี้, 14:00 - 15:00 น.',
-    note: 'รอเริ่มทำงาน (กรุณาสแกน QR ก่อน 14:10 น.)'
-  });
+  // ฟังก์ชันแปลงวันที่ให้ตรงตาม Local Timezone (ป้องกันวันที่ถอยหลังไป 1 วัน)
+  const formatLocalDate = (dateString) => {
+    if (!dateString) return '';
+    // กรณี dateString มาในรูปแบบ YYYY-MM-DD
+    const dateOnly = String(dateString).split('T')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) {
+      return `${parts[0]}-${parts[1]}-${parts[2]}`;
+    }
+    const d = new Date(dateString);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-  // โหลดข้อมูลผู้ใช้จาก LocalStorage และดึงรายการเครื่องซักผ้าจาก API
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       setUser(storedUser);
 
-      // ยิง API ดึงรายการเครื่องซักผ้าจริงจาก MySQL
       const machineData = await bookingService.getMachines();
       setMachines(machineData);
+
+      const userId = storedUser.id || storedUser.user_id;
+      if (userId) {
+        const bookingData = await bookingService.getUserActiveBooking(userId);
+        setActiveBooking(bookingData);
+      }
     } catch (error) {
-      console.error('Error fetching machines:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
@@ -36,7 +50,52 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // สร้าง Socket Connection
+    const socket = io('http://localhost:5000');
+
+    // ดักฟัง Event จาก Socket.io แบบ Real-time
+    socket.on('booking_created', () => {
+      fetchDashboardData();
+    });
+
+    socket.on('booking_cancelled', () => {
+      fetchDashboardData();
+    });
+
+    socket.on('machine_status_updated', () => {
+      fetchDashboardData();
+    });
+
+    return () => {
+      socket.off('booking_created');
+      socket.off('booking_cancelled');
+      socket.off('machine_status_updated');
+      socket.disconnect();
+    };
   }, []);
+
+  const handleCancelBooking = async () => {
+    if (!activeBooking) return;
+    if (!window.confirm('คุณต้องการยกเลิกการจองคิวนี้ใช่หรือไม่?')) return;
+
+    try {
+      const bookingId = activeBooking.booking_code || activeBooking.id;
+
+      if (!bookingId) {
+        alert('ไม่พบรหัสการจองคิว');
+        return;
+      }
+
+      await bookingService.cancelBooking(bookingId);
+      setActiveBooking(null);
+      fetchDashboardData();
+      alert('ยกเลิกรายการจองคิวเรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Cancel booking error:', error);
+      alert(error.response?.data?.message || 'ไม่สามารถยกเลิกคิวได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -88,14 +147,18 @@ export default function Dashboard() {
         <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 mb-6">
           <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-bold bg-[#8B5A2B] text-white px-2 py-0.5 rounded-full">
-              คิวที่จองอยู่ปัจจุบัน
+              คิวที่จองอยู่ปัจจุบัน ({activeBooking.booking_code})
             </span>
             <span className="text-xs text-amber-900 font-semibold">{activeBooking.timeSlot}</span>
           </div>
           <h4 className="text-sm font-bold text-amber-950">{activeBooking.machineName}</h4>
-          <p className="text-[11px] text-amber-800/80 mb-3">{activeBooking.note}</p>
+          <p className="text-[11px] text-amber-800/80 mb-3">
+            {activeBooking.booking_date
+              ? `วันที่: ${formatLocalDate(activeBooking.booking_date)}`
+              : 'รอเริ่มทำงาน'}
+          </p>
           <button
-            onClick={() => setActiveBooking(null)}
+            onClick={handleCancelBooking}
             className="w-full py-1.5 bg-white border border-amber-300 text-amber-900 text-xs font-bold rounded-xl hover:bg-amber-100 transition-all"
           >
             ยกเลิกคิว
