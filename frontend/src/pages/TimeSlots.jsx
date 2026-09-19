@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { bookingService } from '../services/bookingService';
 
 export default function TimeSlots() {
   const { machineId } = useParams();
@@ -8,8 +9,17 @@ export default function TimeSlots() {
   const [selectedDay, setSelectedDay] = useState('today');
   const [selectedSlot, setSelectedSlot] = useState('14:00 - 15:00 น.');
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [bookingResult, setBookingResult] = useState(null);
 
-  // จำลองรายการช่วงเวลา
+  // คำนวณวันที่จริง (วันนี้ / พรุ่งนี้)
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const formatDate = (date) => date.toISOString().split('T')[0];
+
   const slots = [
     { time: '08:00 - 09:00 น.', status: 'booked' },
     { time: '09:00 - 10:00 น.', status: 'booked' },
@@ -17,7 +27,34 @@ export default function TimeSlots() {
     { time: '11:00 - 12:00 น.', status: 'available' },
     { time: '12:00 - 13:00 น.', status: 'available' },
     { time: '14:00 - 15:00 น.', status: 'available' },
+    { time: '15:00 - 16:00 น.', status: 'available' },
   ];
+
+  const handleConfirmBooking = async () => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const targetDate = selectedDay === 'today' ? formatDate(today) : formatDate(tomorrow);
+
+      // ยิง API สร้างคิวจอง
+      const result = await bookingService.createBooking({
+        user_id: user.id || 1,
+        machine_id: parseInt(machineId) || 1,
+        booking_date: targetDate,
+        time_slot: selectedSlot
+      });
+
+      setBookingResult(result);
+      setShowModal(true);
+    } catch (err) {
+      console.error('Booking Error:', err);
+      setError(err.response?.data?.message || 'ไม่สามารถทำการจองได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-md md:max-w-3xl mx-auto min-h-screen bg-slate-50 p-4 relative">
@@ -31,7 +68,7 @@ export default function TimeSlots() {
         </button>
         <div>
           <h2 className="text-sm font-bold text-slate-800">เลือกเวลาจอง (เครื่อง {machineId || '01'})</h2>
-          <p className="text-[10px] text-slate-400">ประเภทเครื่องซักผ้า 10 กิโลกรัม</p>
+          <p className="text-[10px] text-slate-400">เลือกวันที่และรอบเวลาที่ต้องการจองใช้งาน</p>
         </div>
       </div>
 
@@ -43,7 +80,7 @@ export default function TimeSlots() {
             selectedDay === 'today' ? 'bg-[#8B5A2B] text-white shadow' : 'bg-white text-slate-600'
           }`}
         >
-          วันนี้ (พุธ) <span className="block text-[9px] font-normal">15 ต.ค. 2567</span>
+          วันนี้ <span className="block text-[9px] font-normal">{formatDate(today)}</span>
         </button>
         <button
           onClick={() => setSelectedDay('tomorrow')}
@@ -51,12 +88,12 @@ export default function TimeSlots() {
             selectedDay === 'tomorrow' ? 'bg-[#8B5A2B] text-white shadow' : 'bg-white text-slate-600'
           }`}
         >
-          พรุ่งนี้ (พฤหัสบดี) <span className="block text-[9px] font-normal">16 ต.ค. 2567</span>
+          พรุ่งนี้ <span className="block text-[9px] font-normal">{formatDate(tomorrow)}</span>
         </button>
       </div>
 
       {/* รายการช่วงเวลา */}
-      <div className="space-y-2 mb-6">
+      <div className="space-y-2 mb-4">
         {slots.map((s, idx) => (
           <div
             key={idx}
@@ -80,11 +117,19 @@ export default function TimeSlots() {
         ))}
       </div>
 
+      {error && (
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <button
-        onClick={() => setShowModal(true)}
-        className="w-full py-3 bg-[#8B5A2B] text-white text-xs font-bold rounded-xl shadow-md hover:bg-[#724822] transition-colors"
+        onClick={handleConfirmBooking}
+        disabled={loading}
+        className="w-full py-3 bg-[#8B5A2B] text-white text-xs font-bold rounded-xl shadow-md hover:bg-[#724822] disabled:bg-slate-300 transition-colors"
       >
-        ยืนยันการจองคิว
+        {loading ? 'กำลังบันทึกการจอง...' : 'ยืนยันการจองคิว'}
       </button>
 
       {/* Pop-up ยืนยันการจองสำเร็จ */}
@@ -93,11 +138,13 @@ export default function TimeSlots() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
             <h3 className="text-base font-bold text-slate-900">จองคิวสำเร็จ!</h3>
-            <p className="text-[11px] text-emerald-600 mb-4">ระบบทำการรายการให้คุณเรียบร้อยแล้ว</p>
+            <p className="text-[11px] text-emerald-600 mb-4">
+              รหัสการจอง: <strong>{bookingResult?.booking_code}</strong>
+            </p>
 
             <div className="bg-slate-50 p-3 rounded-xl text-xs space-y-1 text-slate-600 mb-4 text-left">
-              <div className="flex justify-between"><span>หมายเลขเครื่อง:</span> <strong className="text-slate-800">เครื่องซักผ้า 01</strong></div>
-              <div className="flex justify-between"><span>วันที่รายการ:</span> <strong className="text-slate-800">วันนี้ (15 ต.ค. 2567)</strong></div>
+              <div className="flex justify-between"><span>หมายเลขเครื่อง:</span> <strong className="text-slate-800">เครื่องซักผ้า {machineId}</strong></div>
+              <div className="flex justify-between"><span>วันที่รายการ:</span> <strong className="text-slate-800">{selectedDay === 'today' ? formatDate(today) : formatDate(tomorrow)}</strong></div>
               <div className="flex justify-between"><span>ช่วงเวลาที่จอง:</span> <strong className="text-slate-800">{selectedSlot}</strong></div>
             </div>
 
