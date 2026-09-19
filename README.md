@@ -3,26 +3,56 @@
 ```text
 washq/
 ├── .github/
-│   └── CODEOWNERS
-├── frontend/                 # ระบบหน้าบ้าน (React + Vite/JS)
-│   ├── public/               # ไฟล์ static เช่น รูปภาพ, favicon
+│   └── CODEOWNERS                  # กำหนดผู้รับผิดชอบ Code Review
+├── database/                       # จัดการฐานข้อมูล (Sprint 1)
+│   ├── schema.sql                  # DDL สร้างตาราง users, machines, bookings
+│   └── seeders.sql                 # Mock data สำหรับทดสอบระบบ
+├── frontend/                       # ฝั่งผู้ใช้งาน / Admin UI (React + Vite)
+│   ├── public/                     # Static assets (Favicon, logos)
 │   ├── src/
-│   │   ├── assets/           # ไฟล์รูปภาพหรือ CSS หลัก
-│   │   ├── components/       # ปุ่ม, การ์ด, Header (UI reusable)
-│   │   ├── pages/            # หน้าเว็บ (เช่น Home, Booking, QueueStatus)
-│   │   ├── services/         # ฟังก์ชันเรียก API (fetch / axios)
-│   │   ├── App.jsx           # Component หลัก
-│   │   └── main.jsx          # จุดเริ่มต้นของ React
-│   ├── package.json
-│   └── index.html
-├── api/                  # ระบบหลังบ้าน (Node.js + Express REST API)
-│   ├── config/               # ไฟล์ตั้งค่า Database / Environment variables
-│   ├── controllers/          # โค้ดจัดการ Logic ของแต่ละ API (เช่น การจองคิว)
-│   ├── models/               # จัดการข้อมูล/ Query กับ Database
-│   ├── routes/               # เส้นทาง API (เช่น /api/machines, /api/bookings)
-│   ├── middlewares/          # ตัวกรอง request (เช่น ตรวจสอบ token / error handling)
-│   ├── server.js             # จุดเริ่มต้นเปิดเซิร์ฟเวอร์ Express
+│   │   ├── assets/                 # รูปภาพประกอบ, Stylesheet หลัก
+│   │   ├── components/
+│   │   │   ├── common/             # UI Reusable (Header, Navbar, Modal)
+│   │   │   ├── machines/           # MachineCard, StatusBadge
+│   │   │   └── admin/              # StatCard, MachineControl, QueueTable
+│   │   ├── pages/                  # หน้าหลักของระบบ
+│   │   │   ├── Login.jsx           # หน้า Login นักศึกษา / Admin (FR-1)
+│   │   │   ├── Dashboard.jsx       # หน้าแสดงสถานะ Real-time & คิวปัจจุบัน (FR-2)
+│   │   │   ├── TimeSlots.jsx       # หน้าเลือกรอบเวลาจองคิว (FR-3)
+│   │   │   ├── AdminDashboard.jsx  # หน้าปรับสถานะเครื่องแบบ Manual (FR-5.3)
+│   │   │   └── AdminQueue.jsx      # หน้าจัดการรายการคิวจองทั้งหมด (FR-5.3)
+│   │   ├── services/               # API Integration (Axios / Socket.io client)
+│   │   │   ├── api.js              # Axios Instance Config
+│   │   │   ├── authService.js      # API ล็อกอิน/จัดการ Token
+│   │   │   ├── machineService.js   # API ดึง/อัปเดตสถานะเครื่อง
+│   │   │   └── bookingService.js   # API จอง/ยกเลิกคิว
+│   │   ├── App.jsx                 # Routing และ Global State Setup
+│   │   └── main.jsx                # React Entry Point
+│   ├── index.html
+│   └── package.json
+├── api/                            # ฝั่งหลังบ้าน (Node.js + Express REST API)
+│   ├── config/                     # ไฟล์ตั้งค่าระบบ
+│   │   ├── db.js                   # MySQL / MariaDB Connection Pool
+│   │   └── mailer.js               # Nodemailer Config (Email Notification)
+│   ├── controllers/                # Business Logic หลัก
+│   │   ├── authController.js       # Login, Password Hashing Verification
+│   │   ├── machineController.js    # ดึงสถานะ Real-time, Admin Manual Reset
+│   │   └── bookingController.js    # จองคิว (กัน Race Condition), ยกเลิกคิว
+│   ├── models/                     # SQL Queries Execution
+│   │   ├── userModel.js
+│   │   ├── machineModel.js
+│   │   └── bookingModel.js
+│   ├── routes/                     # API Endpoints Route definitions
+│   │   ├── authRoutes.js           # /api/auth
+│   │   ├── machineRoutes.js        # /api/machines
+│   │   └── bookingRoutes.js        # /api/bookings
+│   ├── middlewares/                # ตัวกรองข้อมูลและความปลอดภัย
+│   │   ├── authMiddleware.js       # ตรวจสอบ JWT Token & Admin Role
+│   │   └── errorHandler.js         # Centralized Error Handler
+│   ├── utils/                      # Helper Functions
+│   │   └── emailService.js         # ส่ง Email แจ้งเตือนเมื่อถึงคิว/ซักเสร็จ
+│   ├── server.js                   # จุดเริ่มต้นเปิด Express App + Socket.io
 │   └── package.json
 ├── .gitignore
-└── README.md
+└── README.md                       # คู่มือการติดตั้งและใช้งานโปรเจกต์
 ```
