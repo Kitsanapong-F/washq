@@ -7,40 +7,83 @@ export default function TimeSlots() {
   const { machineId } = useParams();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState('today');
-  const [selectedSlot, setSelectedSlot] = useState('14:00 - 15:00 น.');
+  const [selectedSlot, setSelectedSlot] = useState('');
+  const [bookedSlots, setBookedSlots] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingSlots, setFetchingSlots] = useState(true);
   const [error, setError] = useState('');
   const [bookingResult, setBookingResult] = useState(null);
 
-  // คำนวณวันที่จริง (วันนี้ / พรุ่งนี้)
+  // ฟังก์ชันแปลง Date เป็น YYYY-MM-DD ตาม Local Timezone (ป้องกันปัญหาวันทีถอยไป 1 วัน)
+  const getLocalDateString = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const formatDate = (date) => date.toISOString().split('T')[0];
-
-  const slots = [
-    { time: '08:00 - 09:00 น.', status: 'booked' },
-    { time: '09:00 - 10:00 น.', status: 'booked' },
-    { time: '10:00 - 11:00 น.', status: 'available' },
-    { time: '11:00 - 12:00 น.', status: 'available' },
-    { time: '12:00 - 13:00 น.', status: 'available' },
-    { time: '14:00 - 15:00 น.', status: 'available' },
-    { time: '15:00 - 16:00 น.', status: 'available' },
+  const baseSlots = [
+    '08:00 - 09:00 น.',
+    '09:00 - 10:00 น.',
+    '10:00 - 11:00 น.',
+    '11:00 - 12:00 น.',
+    '12:00 - 13:00 น.',
+    '14:00 - 15:00 น.',
+    '15:00 - 16:00 น.',
   ];
 
+  // ดึงรายการรอบเวลาที่ถูกจองแล้วของเครื่องนี้ในวันที่เลือก
+  const fetchBookedSlots = async () => {
+    setFetchingSlots(true);
+    try {
+      const targetDate = selectedDay === 'today' ? getLocalDateString(today) : getLocalDateString(tomorrow);
+      const allBookings = await bookingService.getAllBookings();
+
+      // กรองเฉพาะคิว active ของเครื่องนี้ และตรงกับวันที่เลือก
+      const activeForThisMachine = allBookings
+        .filter(b =>
+          String(b.machine_id) === String(machineId) &&
+          String(b.booking_date).startsWith(targetDate) &&
+          b.status === 'active'
+        )
+        .map(b => b.time_slot);
+
+      setBookedSlots(activeForThisMachine);
+
+      // เลือกรอบเวลาว่างแรกเป็น default
+      const firstAvailable = baseSlots.find(slot => !activeForThisMachine.includes(slot));
+      if (firstAvailable) setSelectedSlot(firstAvailable);
+    } catch (err) {
+      console.error('Fetch booked slots error:', err);
+    } finally {
+      setFetchingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookedSlots();
+  }, [machineId, selectedDay]);
+
   const handleConfirmBooking = async () => {
+    if (!selectedSlot) {
+      setError('กรุณาเลือกช่วงเวลาที่ต้องการจอง');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const targetDate = selectedDay === 'today' ? formatDate(today) : formatDate(tomorrow);
+      const targetDate = selectedDay === 'today' ? getLocalDateString(today) : getLocalDateString(tomorrow);
 
-      // ยิง API สร้างคิวจอง
       const result = await bookingService.createBooking({
-        user_id: user.id || 1,
+        user_id: user.id || user.user_id || 1,
         machine_id: parseInt(machineId) || 1,
         booking_date: targetDate,
         time_slot: selectedSlot
@@ -80,7 +123,7 @@ export default function TimeSlots() {
             selectedDay === 'today' ? 'bg-[#8B5A2B] text-white shadow' : 'bg-white text-slate-600'
           }`}
         >
-          วันนี้ <span className="block text-[9px] font-normal">{formatDate(today)}</span>
+          วันนี้ <span className="block text-[9px] font-normal">{getLocalDateString(today)}</span>
         </button>
         <button
           onClick={() => setSelectedDay('tomorrow')}
@@ -88,34 +131,43 @@ export default function TimeSlots() {
             selectedDay === 'tomorrow' ? 'bg-[#8B5A2B] text-white shadow' : 'bg-white text-slate-600'
           }`}
         >
-          พรุ่งนี้ <span className="block text-[9px] font-normal">{formatDate(tomorrow)}</span>
+          พรุ่งนี้ <span className="block text-[9px] font-normal">{getLocalDateString(tomorrow)}</span>
         </button>
       </div>
 
       {/* รายการช่วงเวลา */}
-      <div className="space-y-2 mb-4">
-        {slots.map((s, idx) => (
-          <div
-            key={idx}
-            onClick={() => s.status === 'available' && setSelectedSlot(s.time)}
-            className={`p-3 bg-white rounded-2xl border flex items-center justify-between transition-all ${
-              s.status === 'booked'
-                ? 'opacity-50 border-slate-100 cursor-not-allowed'
-                : selectedSlot === s.time
-                ? 'border-[#8B5A2B] ring-1 ring-[#8B5A2B] cursor-pointer'
-                : 'border-slate-100 hover:border-slate-200 cursor-pointer'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-700">{s.time}</span>
-            </div>
-            <span className={`text-[10px] font-semibold ${s.status === 'booked' ? 'text-slate-400' : 'text-emerald-600'}`}>
-              {s.status === 'booked' ? 'ถูกจอง' : 'ว่าง'}
-            </span>
-          </div>
-        ))}
-      </div>
+      {fetchingSlots ? (
+        <div className="text-center py-8 text-xs text-slate-400">กำลังตรวจสอบสถานะรอบเวลา...</div>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {baseSlots.map((timeText, idx) => {
+            const isBooked = bookedSlots.includes(timeText);
+            const isSelected = selectedSlot === timeText;
+
+            return (
+              <div
+                key={idx}
+                onClick={() => !isBooked && setSelectedSlot(timeText)}
+                className={`p-3 bg-white rounded-2xl border flex items-center justify-between transition-all ${
+                  isBooked
+                    ? 'opacity-50 border-slate-100 bg-slate-100/50 cursor-not-allowed'
+                    : isSelected
+                    ? 'border-[#8B5A2B] ring-1 ring-[#8B5A2B] cursor-pointer'
+                    : 'border-slate-100 hover:border-slate-200 cursor-pointer'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs font-bold text-slate-700">{timeText}</span>
+                </div>
+                <span className={`text-[10px] font-semibold ${isBooked ? 'text-slate-400' : 'text-emerald-600'}`}>
+                  {isBooked ? 'ถูกจอง' : 'ว่าง'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs flex items-center gap-2">
@@ -126,7 +178,7 @@ export default function TimeSlots() {
 
       <button
         onClick={handleConfirmBooking}
-        disabled={loading}
+        disabled={loading || fetchingSlots}
         className="w-full py-3 bg-[#8B5A2B] text-white text-xs font-bold rounded-xl shadow-md hover:bg-[#724822] disabled:bg-slate-300 transition-colors"
       >
         {loading ? 'กำลังบันทึกการจอง...' : 'ยืนยันการจองคิว'}
@@ -144,7 +196,7 @@ export default function TimeSlots() {
 
             <div className="bg-slate-50 p-3 rounded-xl text-xs space-y-1 text-slate-600 mb-4 text-left">
               <div className="flex justify-between"><span>หมายเลขเครื่อง:</span> <strong className="text-slate-800">เครื่องซักผ้า {machineId}</strong></div>
-              <div className="flex justify-between"><span>วันที่รายการ:</span> <strong className="text-slate-800">{selectedDay === 'today' ? formatDate(today) : formatDate(tomorrow)}</strong></div>
+              <div className="flex justify-between"><span>วันที่รายการ:</span> <strong className="text-slate-800">{selectedDay === 'today' ? getLocalDateString(today) : getLocalDateString(tomorrow)}</strong></div>
               <div className="flex justify-between"><span>ช่วงเวลาที่จอง:</span> <strong className="text-slate-800">{selectedSlot}</strong></div>
             </div>
 
