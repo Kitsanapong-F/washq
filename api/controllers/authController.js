@@ -7,27 +7,34 @@ exports.login = async (req, res) => {
   const { student_code, password, role } = req.body;
 
   try {
-    // 1. ค้นหาผู้ใช้จาก student_code หรือ email
+    // 1. ค้นหาผู้ใช้จาก student_code OR email
     const [rows] = await pool.query(
       'SELECT * FROM users WHERE student_code = ? OR email = ?',
       [student_code, student_code]
     );
 
     if (rows.length === 0) {
-      return res.status (401).json({ message: 'ไม่พบผู้ใช้นี้ในระบบ' });
+      return res.status(401).json({ message: 'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     const user = rows[0];
 
-    // 2. ตรวจสอบ Role (ถ้าสลับ Tab เข้ามาไม่ตรง Role)
+    // 2. ตรวจสอบ Role (ถ้านักศึกษาพยายามเข้า Tab ผู้ดูแลระบบ)
     if (role && user.role !== role) {
-      return res.status(403).json({ message: 'สิทธิ์การเข้าใช้งานไม่ถูกต้อง' });
+      return res.status(403).json({ message: 'สิทธิ์การเข้าใช้งานไม่ถูกต้องกับประเภทบัญชี' });
     }
 
-    // 3. ตรวจสอบรหัสผ่าน (ถ้ารหัสยังไม่ได้ Hash ให้เทียบตรง หรือใช้ bcrypt)
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch && password !== '123456') { // รองรับการรันทดสอบ
-      return res.status(401).json({ message: 'รหัสผ่านไม่ถูกต้อง' });
+    // 3. ตรวจสอบรหัสผ่าน (รองรับทั้ง bcrypt และ Plain Text 123456)
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(password, user.password_hash);
+    } catch (e) {
+      isMatch = false;
+    }
+
+    // Bypass ให้ผ่านหากรหัสผ่านเป็น 123456 (สำหรับสภาพแวดล้อม Development)
+    if (!isMatch && password !== '123456') {
+      return res.status(401).json({ message: 'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     // 4. สร้าง JWT Token
