@@ -4,9 +4,33 @@ const pool = require('../config/db');
 exports.createBooking = async (req, res) => {
   const { user_id, machine_id, booking_date, time_slot } = req.body;
 
+  if (!user_id || !machine_id || !booking_date || !time_slot) {
+    return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' });
+  }
+
   try {
     // ตัดเอาเฉพาะรูปแบบ YYYY-MM-DD ชัวร์ๆ
     const cleanDate = String(booking_date).split('T')[0];
+
+    // ตรวจสอบความถูกต้องของวันที่ (ไม่ย้อนหลัง และจองล่วงหน้าได้ไม่เกิน 15 วัน)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 15);
+
+    const reqDate = new Date(`${cleanDate}T00:00:00`);
+    if (isNaN(reqDate.getTime())) {
+      return res.status(400).json({ message: 'รูปแบบวันที่ไม่ถูกต้อง' });
+    }
+
+    if (reqDate < today) {
+      return res.status(400).json({ message: 'ไม่สามารถเลือกจองคิวย้อนหลังได้' });
+    }
+
+    if (reqDate > maxDate) {
+      return res.status(400).json({ message: 'สามารถจองคิวล่วงหน้าได้ไม่เกิน 15 วัน' });
+    }
 
     // 1. ตรวจสอบว่ารอบเวลานี้ในวันที่กำหนด มีคนจองไปแล้วหรือยัง
     const [existing] = await pool.query(
@@ -30,16 +54,17 @@ exports.createBooking = async (req, res) => {
     // 4. อัปเดตสถานะเครื่องซักผ้าเป็น booked
     await pool.query('UPDATE machines SET status = "booked" WHERE machine_id = ?', [machine_id]);
 
-    // แจ้งเตือน Real-time ผ่าน Socket.io
+    // แจ้งเตือน Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง (Dashboard, TimeSlots, Admin)
     const io = req.app.get('socketio');
     if (io) {
-      io.emit('booking_created', { machine_id, time_slot, booking_date: cleanDate });
+      io.emit('booking_created', { machine_id: Number(machine_id), time_slot, booking_date: cleanDate, booking_code });
+      io.emit('machine_status_updated', { machine_id: Number(machine_id), status: 'booked' });
     }
 
     res.status(201).json({
       message: 'จองคิวสำเร็จ',
       booking_code,
-      details: { machine_id, booking_date: cleanDate, time_slot }
+      details: { machine_id: Number(machine_id), booking_date: cleanDate, time_slot }
     });
 
   } catch (error) {
@@ -81,7 +106,7 @@ exports.cancelBooking = async (req, res) => {
   try {
     // 1. ค้นหาข้อมูลการจองเพื่อดูว่าใช้ booking_code หรือ booking_id
     const [bookings] = await pool.query(
-      'SELECT machine_id, booking_code FROM bookings WHERE booking_code = ? OR booking_id = ?',
+      'SELECT machine_id, booking_code, status FROM bookings WHERE booking_code = ? OR booking_id = ?',
       [id, id]
     );
 
@@ -89,7 +114,11 @@ exports.cancelBooking = async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบรายการจองนี้ในระบบ' });
     }
 
-    const { machine_id, booking_code } = bookings[0];
+    const { machine_id, booking_code, status: currentStatus } = bookings[0];
+
+    if (currentStatus === 'cancelled') {
+      return res.status(400).json({ message: 'รายการจองนี้ถูกยกเลิกไปแล้ว' });
+    }
 
     // 2. อัปเดตสถานะ booking เป็น cancelled โดยอิงจาก booking_code
     await pool.query(
@@ -97,13 +126,20 @@ exports.cancelBooking = async (req, res) => {
       [booking_code]
     );
 
-    // 3. คืนสถานะเครื่องซักผ้ากลับเป็น available
-    await pool.query('UPDATE machines SET status = "available" WHERE machine_id = ?', [machine_id]);
+    // 3. ตรวจสอบว่ายังมีคิว active อื่นของเครื่องนี้อยู่อีกหรือไม่
+    const [otherActive] = await pool.query(
+      'SELECT booking_id FROM bookings WHERE machine_id = ? AND status = "active"',
+      [machine_id]
+    );
 
-    // แจ้งเตือน Real-time ผ่าน Socket.io
+    const newMachineStatus = otherActive.length > 0 ? 'booked' : 'available';
+    await pool.query('UPDATE machines SET status = ? WHERE machine_id = ?', [newMachineStatus, machine_id]);
+
+    // แจ้งเตือน Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง
     const io = req.app.get('socketio');
     if (io) {
-      io.emit('booking_cancelled', { machine_id, booking_code });
+      io.emit('booking_cancelled', { machine_id: Number(machine_id), booking_code });
+      io.emit('machine_status_updated', { machine_id: Number(machine_id), status: newMachineStatus });
     }
 
     res.json({ message: 'ยกเลิกรายการจองคิวเรียบร้อยแล้ว' });
@@ -113,7 +149,7 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// GET /api/bookings/user/:userId/active (ดึงคิวที่จองอยู่ปัจจุบันของนักศึกษา)
+// GET /api/bookings/user/:userId/active (ดึงคิวที่จองอยู่ทั้งหมดของนักศึกษา)
 exports.getUserActiveBooking = async (req, res) => {
   const { userId } = req.params;
 
@@ -122,23 +158,22 @@ exports.getUserActiveBooking = async (req, res) => {
       SELECT
         b.booking_id AS id,
         b.booking_code,
+        b.machine_id,
         m.machine_name AS machineName,
+        m.location,
         b.time_slot AS timeSlot,
-        DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date
+        DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+        b.status,
+        b.created_at
       FROM bookings b
       JOIN machines m ON b.machine_id = m.machine_id
       WHERE b.user_id = ? AND b.status = 'active'
-      ORDER BY b.created_at DESC
-      LIMIT 1
+      ORDER BY b.booking_date ASC, b.time_slot ASC, b.created_at DESC
     `, [userId]);
 
-    if (rows.length === 0) {
-      return res.json(null);
-    }
-
-    res.json(rows[0]);
+    res.json(rows);
   } catch (error) {
-    console.error('Fetch active booking error:', error);
+    console.error('Fetch active bookings error:', error);
     res.status(500).json({ message: 'ดึงข้อมูลคิวปัจจุบันไม่สำเร็จ' });
   }
 };
