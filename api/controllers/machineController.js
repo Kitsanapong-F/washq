@@ -11,6 +11,21 @@ exports.getAllMachines = async (req, res) => {
   }
 };
 
+// GET /api/machines/:id
+exports.getMachineById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await pool.query('SELECT * FROM machines WHERE machine_id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'ไม่พบเครื่องซักผ้านี้ในระบบ' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Fetch machine by id error:', error);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลเครื่องซักผ้า' });
+  }
+};
+
 // PUT /api/machines/:id/status
 exports.updateMachineStatus = async (req, res) => {
   const { id } = req.params;
