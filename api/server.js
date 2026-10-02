@@ -25,6 +25,23 @@ app.get('/', (req, res) => {
 app.use('/api', apiRoutes);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 WashQ API Server running at:`);
+  console.log(`   - Local:   http://localhost:${PORT}`);
+  try {
+    const os = require('os');
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          console.log(`   - Network: http://${iface.address}:${PORT}`);
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore network interface discovery errors
+  }
 });
+

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: washq_mysql
+    restart: always
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: washq_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seeders.sql:/docker-entrypoint-initdb.d/02-seeders.sql:ro
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: washq_api
+    restart: always
+    environment:
+      PORT: 5000
+      HOST: 0.0.0.0
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ''
+      DB_NAME: washq_db
+      JWT_SECRET: washq_secret_key_2026
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: washq_frontend
+    restart: always
+    environment:
+      VITE_API_TARGET: http://api:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
