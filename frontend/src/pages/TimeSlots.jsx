@@ -58,6 +58,29 @@ export default function TimeSlots() {
     '15:00 - 16:00 น.',
   ];
 
+  // ฟังก์ชันตรวจสอบว่ารอบเวลาเลยเวลาปัจจุบันไปแล้วหรือไม่ (เฉพาะกรณีเลือกวันที่เป็น "วันนี้")
+  const isSlotPast = (slotStr, dateStr) => {
+    if (!slotStr || !dateStr) return false;
+    const now = new Date();
+    const todayStr = getLocalDateString(now);
+
+    // ตรวจสอบเฉพาะถ้าวันที่เลือกคือ "วันนี้"
+    if (dateStr !== todayStr) {
+      return false;
+    }
+
+    const match = slotStr.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return false;
+
+    const slotHour = parseInt(match[1], 10);
+    const slotMinute = parseInt(match[2], 10);
+
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    return currentHour > slotHour || (currentHour === slotHour && currentMinute >= slotMinute);
+  };
+
   // ดึงรายการรอบเวลาที่ถูกจองแล้วของเครื่องนี้ในวันที่เลือก
   const fetchBookedSlots = async () => {
     setFetchingSlots(true);
@@ -75,10 +98,11 @@ export default function TimeSlots() {
 
       setBookedSlots(activeForThisMachine);
 
-      // ถ้าไม่มี slot ที่เลือก หรือ slot ปัจจุบันถูกจองไปแล้ว ให้เลือกอันว่างอันแรกแทน
+      // ถ้าไม่มี slot ที่เลือก หรือ slot ปัจจุบันถูกจองไปแล้ว หรือเลยเวลาไปแล้ว ให้เลือกอันว่างอันแรกแทน
       setSelectedSlot(prev => {
-        if (!prev || activeForThisMachine.includes(prev)) {
-          const firstAvailable = baseSlots.find(slot => !activeForThisMachine.includes(slot));
+        const isSlotAvailable = (slot) => !activeForThisMachine.includes(slot) && !isSlotPast(slot, selectedDate);
+        if (!prev || !isSlotAvailable(prev)) {
+          const firstAvailable = baseSlots.find(isSlotAvailable);
           return firstAvailable || '';
         }
         return prev;
@@ -119,6 +143,11 @@ export default function TimeSlots() {
   const handleConfirmBooking = async () => {
     if (!selectedSlot) {
       setError('กรุณาเลือกช่วงเวลาที่ต้องการจอง');
+      return;
+    }
+
+    if (isSlotPast(selectedSlot, selectedDate)) {
+      setError('ไม่สามารถจองช่วงเวลาในอดีตได้');
       return;
     }
 
@@ -209,27 +238,43 @@ export default function TimeSlots() {
         <div className="space-y-2 mb-4">
           {baseSlots.map((timeText, idx) => {
             const isBooked = bookedSlots.includes(timeText);
+            const isPast = isSlotPast(timeText, selectedDate);
+            const isDisabled = isBooked || isPast;
             const isSelected = selectedSlot === timeText;
 
             return (
               <div
                 key={idx}
-                onClick={() => !isBooked && setSelectedSlot(timeText)}
+                onClick={() => !isDisabled && setSelectedSlot(timeText)}
                 className={`p-3 bg-white rounded-2xl border flex items-center justify-between transition-all ${
-                  isBooked
-                    ? 'opacity-50 border-slate-100 bg-slate-100/50 cursor-not-allowed'
+                  isPast
+                    ? 'opacity-40 border-slate-200 bg-slate-100/70 cursor-not-allowed select-none'
+                    : isBooked
+                    ? 'opacity-50 border-slate-100 bg-slate-100/50 cursor-not-allowed select-none'
                     : isSelected
                     ? 'border-[#8B5A2B] ring-1 ring-[#8B5A2B] cursor-pointer shadow-xs'
                     : 'border-slate-100 hover:border-slate-200 cursor-pointer'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-bold text-slate-700">{timeText}</span>
+                  <Clock className={`w-4 h-4 ${isPast ? 'text-slate-300' : 'text-slate-400'}`} />
+                  <span className={`text-xs font-bold ${isPast ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                    {timeText}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-semibold ${isBooked ? 'text-slate-400' : 'text-emerald-600'}`}>
-                  {isBooked ? 'ถูกจองแล้ว' : 'ว่าง'}
+                {isPast ? (
+                  <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100">
+                    เลยเวลาแล้ว
+                  </span>
+                ) : isBooked ? (
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    ถูกจองแล้ว
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-emerald-600">
+                    ว่าง
                 </span>
+                )}
               </div>
             );
           })}
