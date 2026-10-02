@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
 import io from 'socket.io-client';
+import Swal from 'sweetalert2';
 
 export default function AdminQueue() {
   const navigate = useNavigate();
@@ -48,16 +49,94 @@ export default function AdminQueue() {
     };
   }, []);
 
-  const handleCancelBooking = async (bookingCode) => {
-    if (!window.confirm(`คุณต้องการยกเลิกการจองคิว ${bookingCode} ใช่หรือไม่?`)) return;
+  const handleCancelBooking = async (queueItem) => {
+    const isObject = typeof queueItem === 'object' && queueItem !== null;
+    const bookingCode = isObject ? queueItem.booking_code : queueItem;
+    if (!bookingCode) return;
 
-    try {
-      await bookingService.cancelBooking(bookingCode);
-      alert(`ยกเลิกรายการจองคิว ${bookingCode} เรียบร้อยแล้ว`);
-      fetchBookings();
-    } catch (err) {
-      console.error('Cancel booking error:', err);
-      alert('ไม่สามารถยกเลิกคิวได้ กรุณาลองใหม่อีกครั้ง');
+    const studentName = isObject && queueItem.name ? queueItem.name : '';
+    const studentCode = isObject && queueItem.student_code ? queueItem.student_code : '';
+    const machineName = isObject && queueItem.machine_name ? queueItem.machine_name : '';
+    const timeSlot = isObject && queueItem.time_slot ? queueItem.time_slot : '';
+
+    const result = await Swal.fire({
+      title: 'ยืนยันการยกเลิกคิว?',
+      html: `
+        <div style="font-size: 14px; color: #4b5563; line-height: 1.6; margin-top: 8px;">
+          คุณต้องการยกเลิกการจองคิวนี้ใช่หรือไม่?
+          <div style="margin: 12px 0 6px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; text-align: left;">
+            <div style="font-weight: 700; color: #1e293b; font-size: 14px; margin-bottom: 3px;">
+              🎫 รหัสคิว: <span style="color: #b45309;">${bookingCode}</span>
+            </div>
+            ${studentCode || studentName ? `
+            <div style="font-size: 13px; color: #64748b;">
+              👤 นักศึกษา: <span style="font-weight: 600; color: #334155;">${studentName} (${studentCode})</span>
+            </div>` : ''}
+            ${machineName ? `
+            <div style="font-size: 13px; color: #64748b;">
+              🧺 เครื่อง: <span style="font-weight: 600; color: #334155;">${machineName}</span>
+            </div>` : ''}
+            ${timeSlot ? `
+            <div style="font-size: 13px; color: #64748b; margin-top: 2px;">
+              ⏰ ช่วงเวลา: <span style="font-weight: 600; color: #334155;">${timeSlot}</span>
+            </div>` : ''}
+          </div>
+          <span style="font-size: 12px; color: #94a3b8;">ระบบจะปรับสถานะคิวเป็นยกเลิก และแจ้งเตือนไปยังผู้ใช้แบบ Real-time</span>
+        </div>
+      `,
+      icon: 'warning',
+      iconColor: '#f59e0b',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'ยืนยันการยกเลิก',
+      cancelButtonText: 'ย้อนกลับ',
+      reverseButtons: true,
+      focusCancel: true,
+      customClass: {
+        popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+        title: 'text-lg font-bold text-slate-800',
+        confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm shadow-sm transition-transform active:scale-95',
+        cancelButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm shadow-sm transition-transform active:scale-95',
+      },
+      buttonsStyling: true,
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await bookingService.cancelBooking(bookingCode);
+        await Swal.fire({
+          icon: 'success',
+          iconColor: '#10b981',
+          title: 'ยกเลิกคิวสำเร็จ!',
+          text: `รายการจองคิว ${bookingCode} ถูกยกเลิกเรียบร้อยแล้ว`,
+          confirmButtonColor: '#10b981',
+          confirmButtonText: 'ตกลง',
+          timer: 2200,
+          timerProgressBar: true,
+          customClass: {
+            popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+            title: 'text-lg font-bold text-slate-800',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
+          }
+        });
+        fetchBookings();
+      } catch (err) {
+        console.error('Cancel booking error:', err);
+        await Swal.fire({
+          icon: 'error',
+          iconColor: '#ef4444',
+          title: 'ไม่สามารถยกเลิกคิวได้',
+          text: err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+          confirmButtonColor: '#6b7280',
+          confirmButtonText: 'ปิด',
+          customClass: {
+            popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+            title: 'text-lg font-bold text-slate-800',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
+          }
+        });
+      }
     }
   };
 
@@ -164,7 +243,7 @@ export default function AdminQueue() {
                       <td className="py-3 px-3 text-right">
                         {q.status === 'active' ? (
                           <button
-                            onClick={() => handleCancelBooking(q.booking_code)}
+                            onClick={() => handleCancelBooking(q)}
                             className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
                           >
                             ยกเลิกคิว

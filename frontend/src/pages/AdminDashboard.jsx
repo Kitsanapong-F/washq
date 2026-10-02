@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { RefreshCw, LogOut } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
 import io from 'socket.io-client';
+import Swal from 'sweetalert2';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -54,11 +55,34 @@ export default function AdminDashboard() {
   const handleSaveStatus = async (id, status) => {
     try {
       await bookingService.updateMachineStatus(id, status);
-      alert('อัปเดตสถานะเครื่องซักผ้าเรียบร้อยแล้ว');
+      await Swal.fire({
+        icon: 'success',
+        iconColor: '#10b981',
+        title: 'สำเร็จ!',
+        text: 'อัปเดตสถานะเครื่องซักผ้าเรียบร้อยแล้ว',
+        timer: 1800,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+          title: 'text-lg font-bold text-slate-800',
+        }
+      });
       fetchMachines();
     } catch (error) {
       console.error('Update status error:', error);
-      alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+      await Swal.fire({
+        icon: 'error',
+        iconColor: '#ef4444',
+        title: 'เกิดข้อผิดพลาด',
+        text: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
+        confirmButtonColor: '#6b7280',
+        confirmButtonText: 'ปิด',
+        customClass: {
+          popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+          title: 'text-lg font-bold text-slate-800',
+          confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
+        }
+      });
     }
   };
 
