@@ -8,7 +8,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [machines, setMachines] = useState([]);
-  const [activeBooking, setActiveBooking] = useState(null);
+  const [activeBookings, setActiveBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // ฟังก์ชันแปลงวันที่ให้ตรงตาม Local Timezone (ป้องกันวันที่ถอยหลังไป 1 วัน)
@@ -39,7 +39,7 @@ export default function Dashboard() {
       const userId = storedUser.id || storedUser.user_id;
       if (userId) {
         const bookingData = await bookingService.getUserActiveBooking(userId);
-        setActiveBooking(bookingData);
+        setActiveBookings(Array.isArray(bookingData) ? bookingData : (bookingData ? [bookingData] : []));
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -75,22 +75,15 @@ export default function Dashboard() {
     };
   }, []);
 
-  const handleCancelBooking = async () => {
-    if (!activeBooking) return;
-    if (!window.confirm('คุณต้องการยกเลิกการจองคิวนี้ใช่หรือไม่?')) return;
+  const handleCancelBooking = async (booking) => {
+    if (!booking) return;
+    const bookingId = booking.booking_code || booking.id;
+    if (!window.confirm(`คุณต้องการยกเลิกการจองคิว ${bookingId} (${booking.machineName || 'เครื่องซักผ้า'}) ใช่หรือไม่?`)) return;
 
     try {
-      const bookingId = activeBooking.booking_code || activeBooking.id;
-
-      if (!bookingId) {
-        alert('ไม่พบรหัสการจองคิว');
-        return;
-      }
-
       await bookingService.cancelBooking(bookingId);
-      setActiveBooking(null);
-      fetchDashboardData();
       alert('ยกเลิกรายการจองคิวเรียบร้อยแล้ว');
+      fetchDashboardData();
     } catch (error) {
       console.error('Cancel booking error:', error);
       alert(error.response?.data?.message || 'ไม่สามารถยกเลิกคิวได้ กรุณาลองใหม่อีกครั้ง');
@@ -142,27 +135,37 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Active Booking Banner */}
-      {activeBooking && (
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 mb-6">
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold bg-[#8B5A2B] text-white px-2 py-0.5 rounded-full">
-              คิวที่จองอยู่ปัจจุบัน ({activeBooking.booking_code})
-            </span>
-            <span className="text-xs text-amber-900 font-semibold">{activeBooking.timeSlot}</span>
+      {/* Active Bookings List (รองรับดูหลายรายการ) */}
+      {activeBookings && activeBookings.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold text-slate-700">
+              รายการคิวที่จองอยู่ของคุณ ({activeBookings.length} รายการ)
+            </h3>
           </div>
-          <h4 className="text-sm font-bold text-amber-950">{activeBooking.machineName}</h4>
-          <p className="text-[11px] text-amber-800/80 mb-3">
-            {activeBooking.booking_date
-              ? `วันที่: ${formatLocalDate(activeBooking.booking_date)}`
-              : 'รอเริ่มทำงาน'}
-          </p>
-          <button
-            onClick={handleCancelBooking}
-            className="w-full py-1.5 bg-white border border-amber-300 text-amber-900 text-xs font-bold rounded-xl hover:bg-amber-100 transition-all"
-          >
-            ยกเลิกคิว
-          </button>
+          <div className="space-y-3">
+            {activeBookings.map((b) => (
+              <div key={b.booking_code || b.id} className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold bg-[#8B5A2B] text-white px-2 py-0.5 rounded-full">
+                    คิวที่จอง ({b.booking_code})
+                  </span>
+                  <span className="text-xs text-amber-900 font-semibold">{b.timeSlot}</span>
+                </div>
+                <h4 className="text-sm font-bold text-amber-950">{b.machineName}</h4>
+                <p className="text-[11px] text-amber-800/80 mb-3">
+                  {b.location ? `${b.location} • ` : ''}
+                  {b.booking_date ? `วันที่: ${formatLocalDate(b.booking_date)}` : 'รอเริ่มทำงาน'}
+                </p>
+                <button
+                  onClick={() => handleCancelBooking(b)}
+                  className="w-full py-1.5 bg-white border border-rose-300 text-rose-700 text-xs font-bold rounded-xl hover:bg-rose-50 transition-all shadow-xs"
+                >
+                  ยกเลิกคิวนี้
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

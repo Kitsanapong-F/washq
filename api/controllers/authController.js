@@ -6,6 +6,10 @@ const jwt = require('jsonwebtoken');
 exports.login = async (req, res) => {
   const { student_code, password, role } = req.body;
 
+  if (!student_code || !password) {
+    return res.status(400).json({ message: 'กรุณากรอกรหัสประจำตัวและรหัสผ่านให้ครบถ้วน' });
+  }
+
   try {
     // 1. ค้นหาผู้ใช้จาก student_code OR email
     const [rows] = await pool.query(

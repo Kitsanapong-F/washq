@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, LogOut } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
+import io from 'socket.io-client';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -22,6 +23,28 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchMachines();
+
+    // ดักฟังการอัปเดตสถานะแบบ Real-time โดยไม่ต้องรีเฟรชหน้าจอ
+    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+
+    socket.on('machine_status_updated', () => {
+      fetchMachines();
+    });
+
+    socket.on('booking_created', () => {
+      fetchMachines();
+    });
+
+    socket.on('booking_cancelled', () => {
+      fetchMachines();
+    });
+
+    return () => {
+      socket.off('machine_status_updated');
+      socket.off('booking_created');
+      socket.off('booking_cancelled');
+      socket.disconnect();
+    };
   }, []);
 
   const handleStatusChange = (id, newStatus) => {
@@ -34,6 +57,7 @@ export default function AdminDashboard() {
       alert('อัปเดตสถานะเครื่องซักผ้าเรียบร้อยแล้ว');
       fetchMachines();
     } catch (error) {
+      console.error('Update status error:', error);
       alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
     }
   };
