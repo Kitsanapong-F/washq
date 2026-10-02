@@ -24,12 +24,38 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'รูปแบบวันที่ไม่ถูกต้อง' });
     }
 
-    if (reqDate < today) {
-      return res.status(400).json({ message: 'ไม่สามารถเลือกจองคิวย้อนหลังได้' });
+    // ตรวจสอบเวลาปัจจุบันตามเขตเวลา Asia/Bangkok
+    const now = new Date();
+    const thaiDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(now);
+    const thaiTimeParts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(now);
+    const currentHour = parseInt(thaiTimeParts.find(p => p.type === 'hour').value, 10);
+    const currentMinute = parseInt(thaiTimeParts.find(p => p.type === 'minute').value, 10);
+
+    // หากวันที่เลือกเป็นอดีต
+    if (cleanDate < thaiDateStr || reqDate < today) {
+      return res.status(400).json({ message: 'ไม่สามารถจองช่วงเวลาในอดีตได้' });
     }
 
     if (reqDate > maxDate) {
       return res.status(400).json({ message: 'สามารถจองคิวล่วงหน้าได้ไม่เกิน 15 วัน' });
+    }
+
+    // หากเป็นวันที่ "วันนี้" ให้ตรวจสอบว่ารอบเวลา (time slot) เลยเวลาปัจจุบันไปแล้วหรือไม่
+    if (cleanDate === thaiDateStr) {
+      const match = String(time_slot).match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        const slotHour = parseInt(match[1], 10);
+        const slotMinute = parseInt(match[2], 10);
+
+        if (currentHour > slotHour || (currentHour === slotHour && currentMinute >= slotMinute)) {
+          return res.status(400).json({ message: 'ไม่สามารถจองช่วงเวลาในอดีตได้' });
+        }
+      }
     }
 
     // 1. ตรวจสอบว่ารอบเวลานี้ในวันที่กำหนด มีคนจองไปแล้วหรือยัง
