@@ -273,7 +273,7 @@ export default function TimeSlots() {
                 ) : (
                   <span className="text-[10px] font-semibold text-emerald-600">
                     ว่าง
-                  </span>
+                </span>
                 )}
               </div>
             );
