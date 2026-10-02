@@ -51,8 +51,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
 
-    // สร้าง Socket Connection
-    const socket = io('http://localhost:5000');
+    // สร้าง Socket Connection (เชื่อมต่อไปยัง Origin ปัจจุบันผ่าน Vite proxy หรือตาม VITE_SOCKET_URL)
+    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
 
     // ดักฟัง Event จาก Socket.io แบบ Real-time
     socket.on('booking_created', () => {
