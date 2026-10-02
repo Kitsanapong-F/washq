@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
 import io from 'socket.io-client';
+import Swal from 'sweetalert2';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -78,15 +79,78 @@ export default function Dashboard() {
   const handleCancelBooking = async (booking) => {
     if (!booking) return;
     const bookingId = booking.booking_code || booking.id;
-    if (!window.confirm(`คุณต้องการยกเลิกการจองคิว ${bookingId} (${booking.machineName || 'เครื่องซักผ้า'}) ใช่หรือไม่?`)) return;
+    const machineName = booking.machineName || 'เครื่องซักผ้า';
 
-    try {
-      await bookingService.cancelBooking(bookingId);
-      alert('ยกเลิกรายการจองคิวเรียบร้อยแล้ว');
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Cancel booking error:', error);
-      alert(error.response?.data?.message || 'ไม่สามารถยกเลิกคิวได้ กรุณาลองใหม่อีกครั้ง');
+    const result = await Swal.fire({
+      title: 'ยืนยันการยกเลิกคิว?',
+      html: `
+        <div style="font-size: 14px; color: #4b5563; line-height: 1.6; margin-top: 8px;">
+          คุณต้องการยกเลิกการจองคิวนี้ใช่หรือไม่?
+          <div style="margin: 12px 0 6px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; text-align: left;">
+            <div style="font-weight: 700; color: #1e293b; font-size: 14px; margin-bottom: 3px;">
+              🎫 รหัสคิว: <span style="color: #b45309;">${bookingId}</span>
+            </div>
+            <div style="font-size: 13px; color: #64748b;">
+              🧺 เครื่อง: <span style="font-weight: 600; color: #334155;">${machineName}</span>
+            </div>
+            ${booking.timeSlot ? `<div style="font-size: 13px; color: #64748b; margin-top: 2px;">⏰ ช่วงเวลา: <span style="font-weight: 600; color: #334155;">${booking.timeSlot}</span></div>` : ''}
+          </div>
+          <span style="font-size: 12px; color: #94a3b8;">เมื่อยกเลิกแล้ว ช่วงเวลานี้จะเปิดว่างให้ผู้อื่นสามารถจองได้ทันที</span>
+        </div>
+      `,
+      icon: 'warning',
+      iconColor: '#f59e0b',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'ยืนยันการยกเลิก',
+      cancelButtonText: 'ย้อนกลับ',
+      reverseButtons: true,
+      focusCancel: true,
+      customClass: {
+        popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+        title: 'text-lg font-bold text-slate-800',
+        confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm shadow-sm transition-transform active:scale-95',
+        cancelButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm shadow-sm transition-transform active:scale-95',
+      },
+      buttonsStyling: true,
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await bookingService.cancelBooking(bookingId);
+        await Swal.fire({
+          icon: 'success',
+          iconColor: '#10b981',
+          title: 'ยกเลิกคิวสำเร็จ!',
+          text: `รายการจองคิว ${bookingId} ถูกยกเลิกเรียบร้อยแล้ว`,
+          confirmButtonColor: '#10b981',
+          confirmButtonText: 'ตกลง',
+          timer: 2200,
+          timerProgressBar: true,
+          customClass: {
+            popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+            title: 'text-lg font-bold text-slate-800',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
+          }
+        });
+        fetchDashboardData();
+      } catch (error) {
+        console.error('Cancel booking error:', error);
+        await Swal.fire({
+          icon: 'error',
+          iconColor: '#ef4444',
+          title: 'ไม่สามารถยกเลิกคิวได้',
+          text: error.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+          confirmButtonColor: '#6b7280',
+          confirmButtonText: 'ปิด',
+          customClass: {
+            popup: 'rounded-3xl shadow-2xl p-6 font-sans',
+            title: 'text-lg font-bold text-slate-800',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
+          }
+        });
+      }
     }
   };
 
