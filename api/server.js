@@ -24,6 +24,10 @@ app.get('/', (req, res) => {
 // ใช้งาน API Routes
 app.use('/api', apiRoutes);
 
+// Centralized Error Handler Middleware
+const errorHandler = require('./middlewares/errorHandler');
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
