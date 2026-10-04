@@ -8,7 +8,11 @@ export const getSocketUrl = () => {
   if (apiUrl && (apiUrl.startsWith('http://') || apiUrl.startsWith('https://'))) {
     return apiUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   }
-  return undefined; // Local development via Vite proxy
+  // Fallback อัตโนมัติสำหรับ Render Static Site
+  if (typeof window !== 'undefined' && window.location.hostname.includes('washq-1.onrender.com')) {
+    return 'https://washq-n9fj.onrender.com';
+  }
+  return undefined; // Local Vite proxy
 };
 
 export const createSocket = () => {

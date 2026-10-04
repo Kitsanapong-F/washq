@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function AdminQueue() {
@@ -15,9 +15,10 @@ export default function AdminQueue() {
     setLoading(true);
     try {
       const data = await bookingService.getAllBookings();
-      setQueues(data);
+      setQueues(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setQueues([]);
     } finally {
       setLoading(false);
     }
@@ -27,7 +28,7 @@ export default function AdminQueue() {
     fetchBookings();
 
     // ดักฟังการจอง/ยกเลิกคิวแบบ Real-time
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    const socket = createSocket();
 
     socket.on('booking_created', () => {
       fetchBookings();
