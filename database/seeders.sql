@@ -12,9 +12,9 @@ ALTER TABLE bookings AUTO_INCREMENT = 1;
 
 -- 1. เพิ่มข้อมูลผู้ใช้งานทดสอบ (รหัสผ่านคือ "123456" ที่ Hash แล้ว)
 INSERT INTO users (student_code, password_hash, email, name, role) VALUES
-('6512345678-9', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', 'somchai@rmutl.ac.th', 'สมชาย รักเรียน', 'student'),
-('6512445890-1', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', 'somsri@rmutl.ac.th', 'สมศรี เรียนดี', 'student'),
-('admin01', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', 'admin.laundry@rmutl.ac.th', 'อาจารย์ธนากร กวยพูน', 'admin');
+('6512345678-9', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', '09chaisu@gmail.com', 'สมชาย รักเรียน', 'student'),
+('6512445890-1', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', '09chaisu@gmail.com', 'สมศรี เรียนดี', 'student'),
+('admin01', '$2b$10$eImiTXuWVxfM37uY4JANjOL.8844ZXE.q7g61b8S.112233445566', '09chaisu@gmail.com', 'อาจารย์ธนากร กวยพูน', 'admin');
 
 -- 2. เพิ่มข้อมูลเครื่องซักผ้าประจำหอพัก (ตาม UI Admin)
 INSERT INTO machines (machine_name, type, location, status) VALUES
