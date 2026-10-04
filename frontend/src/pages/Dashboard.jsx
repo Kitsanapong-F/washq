@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function Dashboard() {
@@ -32,10 +32,14 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!storedUser || (!storedUser.id && !storedUser.user_id && !storedUser.student_code)) {
+        navigate('/login');
+        return;
+      }
       setUser(storedUser);
 
       const machineData = await bookingService.getMachines();
-      setMachines(machineData);
+      setMachines(Array.isArray(machineData) ? machineData : []);
 
       const userId = storedUser.id || storedUser.user_id;
       if (userId) {
@@ -52,8 +56,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
 
-    // สร้าง Socket Connection (เชื่อมต่อไปยัง Origin ปัจจุบันผ่าน Vite proxy หรือตาม VITE_SOCKET_URL)
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    // สร้าง Socket Connection
+    const socket = createSocket();
 
     // ดักฟัง Event จาก Socket.io แบบ Real-time
     socket.on('booking_created', () => {

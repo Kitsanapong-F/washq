@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 
 export default function TimeSlots() {
   const { machineId } = useParams();
@@ -117,8 +117,8 @@ export default function TimeSlots() {
   useEffect(() => {
     fetchBookedSlots();
 
-    // ดักฟังการเปลี่ยนแปลงแบบ Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    // ดักฟังการเปลี่ยนแปลงแบบ Real-time ผ่าน Socket.io
+    const socket = createSocket();
 
     socket.on('booking_created', () => {
       fetchBookedSlots();

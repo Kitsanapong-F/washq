@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, LogOut } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function AdminDashboard() {
@@ -14,7 +14,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const data = await bookingService.getMachines();
-      setMachines(data);
+      setMachines(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {
@@ -26,7 +26,7 @@ export default function AdminDashboard() {
     fetchMachines();
 
     // ดักฟังการอัปเดตสถานะแบบ Real-time โดยไม่ต้องรีเฟรชหน้าจอ
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    const socket = createSocket();
 
     socket.on('machine_status_updated', () => {
       fetchMachines();
