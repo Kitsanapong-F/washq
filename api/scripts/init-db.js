@@ -14,22 +14,29 @@ if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
 require('dotenv').config({ path: envPath });
 
 const DB_HOST = process.env.DB_HOST || 'localhost';
-const DB_PORT = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306;
-const DB_USER = process.env.DB_USER || 'root';
+// หากไม่มี DB_PORT แต่มี PORT ที่เป็นพอร์ตฐานข้อมูล (เช่น 26081) ให้ปรับให้อัตโนมัติ
+const DB_PORT = process.env.DB_PORT 
+  ? Number(process.env.DB_PORT) 
+  : (process.env.PORT && Number(process.env.PORT) !== 5000 && Number(process.env.PORT) !== 3000 ? Number(process.env.PORT) : 3306);
+// หากเชื่อมต่อไป Aiven และใส่ user เป็น defaultdb ให้ปรับเป็น avnadmin อัตโนมัติ
+const DB_USER = (process.env.DB_USER === 'defaultdb' && DB_HOST.includes('aivencloud.com')) ? 'avnadmin' : (process.env.DB_USER || 'root');
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'washq_db';
+
+const isCloudDB = DB_HOST && !['localhost', '127.0.0.1'].includes(DB_HOST);
+const useSSL = process.env.DB_SSL === 'true' || isCloudDB;
 
 async function initDatabase() {
   console.log(`⏳ กำลังเชื่อมต่อ MySQL Server ที่ ${DB_HOST}:${DB_PORT} (User: ${DB_USER})...`);
   
   let connection;
   try {
-    // เชื่อมต่อไปยัง MySQL Server โดยยังไม่ระบุฐานข้อมูล
     connection = await mysql.createConnection({
       host: DB_HOST,
       port: DB_PORT,
       user: DB_USER,
       password: DB_PASSWORD,
+      ssl: useSSL ? { rejectUnauthorized: false } : undefined,
       multipleStatements: true
     });
   } catch (err) {
@@ -41,8 +48,12 @@ async function initDatabase() {
   }
 
   try {
-    console.log(`📦 ตรวจสอบและสร้างฐานข้อมูล '${DB_NAME}'...`);
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    console.log(`📦 ตรวจสอบและเชื่อมต่อฐานข้อมูล '${DB_NAME}'...`);
+    try {
+      await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    } catch (e) {
+      // สำหรับ Cloud DB (เช่น Aiven) ที่ไม่อนุญาตให้รัน CREATE DATABASE ให้ข้ามไป USE
+    }
     await connection.query(`USE \`${DB_NAME}\`;`);
 
     // อ่าน schema.sql
@@ -50,7 +61,11 @@ async function initDatabase() {
     if (fs.existsSync(schemaPath)) {
       console.log(`🔨 กำลังสร้าง Tables จาก database/schema.sql...`);
       const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      await connection.query(schemaSql);
+      // ลบคำสั่ง CREATE DATABASE และ USE ออก เพื่อให้ทำงานได้ทั้ง Local และ Cloud DB (เช่น Aiven defaultdb)
+      const cleanSchemaSql = schemaSql
+        .replace(/CREATE DATABASE IF NOT EXISTS[^;]+;/gi, '')
+        .replace(/USE\s+[^;]+;/gi, '');
+      await connection.query(cleanSchemaSql);
       console.log(`✅ สร้าง Tables สำเร็จ`);
     } else {
       console.warn(`⚠️ ไม่พบไฟล์ ${schemaPath}`);
@@ -61,7 +76,8 @@ async function initDatabase() {
     if (fs.existsSync(seedersPath)) {
       console.log(`🌱 กำลังนำเข้าข้อมูลทดสอบจาก database/seeders.sql...`);
       const seedersSql = fs.readFileSync(seedersPath, 'utf8');
-      await connection.query(seedersSql);
+      const cleanSeedersSql = seedersSql.replace(/USE\s+[^;]+;/gi, '');
+      await connection.query(cleanSeedersSql);
       console.log(`✅ นำเข้าข้อมูล Seeders สำเร็จ`);
     } else {
       console.warn(`⚠️ ไม่พบไฟล์ ${seedersPath}`);

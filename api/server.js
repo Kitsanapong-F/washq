@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config();
 
 const apiRoutes = require('./routes/api'); // Import routes
