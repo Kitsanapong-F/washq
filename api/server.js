@@ -20,9 +20,30 @@ app.use(express.json());
 
 app.set('socketio', io);
 
+const pool = require('./config/db');
+
 app.get('/', (req, res) => {
   res.json({ message: 'WashQ API Server is running successfully!' });
 });
+
+app.get('/health', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT 1 as test');
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      db_host: process.env.DB_HOST || 'localhost'
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      error: err.message,
+      db_host: process.env.DB_HOST || 'localhost'
+    });
+  }
+});
+
 // ใช้งาน API Routes
 app.use('/api', apiRoutes);
 
