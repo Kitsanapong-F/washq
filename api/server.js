@@ -28,6 +28,9 @@ app.use('/api', apiRoutes);
 const errorHandler = require('./middlewares/errorHandler');
 app.use(errorHandler);
 
+// Notification Scheduler (ระบบแจ้งเตือน Email เมื่อถึงเวลาจอง)
+const { startNotificationScheduler } = require('./services/notificationScheduler');
+
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -47,5 +50,11 @@ server.listen(PORT, HOST, () => {
   } catch (err) {
     // Ignore network interface discovery errors
   }
+
+  // เริ่มต้นระบบตรวจสอบและส่งอีเมลแจ้งเตือนเมื่อถึงเวลา
+  startNotificationScheduler().catch((err) => {
+    console.error('❌ ไม่สามารถเริ่มระบบ Notification Scheduler ได้:', err.message);
+  });
 });
+
 
