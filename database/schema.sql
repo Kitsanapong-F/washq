@@ -42,6 +42,7 @@ CREATE TABLE bookings (
     booking_date DATE NOT NULL,
     time_slot VARCHAR(50) NOT NULL, -- เช่น 14:00 - 15:00 น.
     status ENUM('active', 'cancelled', 'completed') DEFAULT 'active',
+    reminder_sent TINYINT(1) DEFAULT 0, -- 0: ยังไม่ได้ส่งแจ้งเตือน, 1: ส่งอีเมลแจ้งเตือนแล้ว
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
