@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import { createSocket } from '../services/socket';
+import io from 'socket.io-client';
 import Swal from 'sweetalert2';
 
 export default function Dashboard() {
@@ -32,23 +32,18 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!storedUser || (!storedUser.id && !storedUser.user_id && !storedUser.student_code)) {
-        navigate('/login');
-        return;
-      }
       setUser(storedUser);
 
       const machineData = await bookingService.getMachines();
-      setMachines(Array.isArray(machineData) ? machineData : []);
+      setMachines(machineData);
 
       const userId = storedUser.id || storedUser.user_id;
       if (userId) {
         const bookingData = await bookingService.getUserActiveBooking(userId);
-        setActiveBookings(Array.isArray(bookingData) ? bookingData : (bookingData && typeof bookingData === 'object' && (bookingData.booking_code || bookingData.id) ? [bookingData] : []));
+        setActiveBookings(Array.isArray(bookingData) ? bookingData : (bookingData ? [bookingData] : []));
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      setMachines([]);
     } finally {
       setLoading(false);
     }
@@ -57,8 +52,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
 
-    // สร้าง Socket Connection แบบ Real-time
-    const socket = createSocket();
+    // สร้าง Socket Connection (เชื่อมต่อไปยัง Origin ปัจจุบันผ่าน Vite proxy หรือตาม VITE_SOCKET_URL)
+    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
 
     // ดักฟัง Event จาก Socket.io แบบ Real-time
     socket.on('booking_created', () => {
@@ -260,7 +255,7 @@ export default function Dashboard() {
 
         {loading ? (
           <div className="text-center py-8 text-xs text-slate-400">กำลังโหลดข้อมูลเครื่องซักผ้า...</div>
-        ) : Array.isArray(machines) && machines.length > 0 ? (
+        ) : (
           <div className="space-y-3">
             {machines.map((m) => (
               <div key={m.machine_id} className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -280,17 +275,6 @@ export default function Dashboard() {
                 </button>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-sm">
-            <p className="text-sm font-semibold text-slate-700 mb-1">ไม่พบข้อมูลเครื่องซักผ้า</p>
-            <p className="text-xs text-slate-400 mb-4">อาจกำลังเชื่อมต่อกับเซิร์ฟเวอร์ กรุณากดปุ่มเพื่อลองใหม่อีกครั้ง</p>
-            <button
-              onClick={fetchDashboardData}
-              className="px-4 py-2 bg-[#8B5A2B] text-white text-xs font-semibold rounded-xl hover:bg-[#724822] transition-colors"
-            >
-              โหลดข้อมูลใหม่อีกครั้ง
-            </button>
           </div>
         )}
       </div>
