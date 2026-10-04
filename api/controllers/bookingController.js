@@ -60,8 +60,8 @@ exports.createBooking = async (req, res) => {
 
     // 1. ตรวจสอบว่ารอบเวลานี้ในวันที่กำหนด มีคนจองไปแล้วหรือยัง
     const [existing] = await pool.query(
-      'SELECT * FROM bookings WHERE machine_id = ? AND DATE(booking_date) = ? AND time_slot = ? AND status = "active"',
-      [machine_id, cleanDate, time_slot]
+      'SELECT * FROM bookings WHERE machine_id = ? AND DATE(booking_date) = ? AND time_slot = ? AND status = ?',
+      [machine_id, cleanDate, time_slot, 'active']
     );
 
     if (existing.length > 0) {
@@ -73,12 +73,12 @@ exports.createBooking = async (req, res) => {
 
     // 3. บันทึกข้อมูลการจองลงตาราง bookings
     await pool.query(
-      'INSERT INTO bookings (booking_code, user_id, machine_id, booking_date, time_slot, status) VALUES (?, ?, ?, ?, ?, "active")',
-      [booking_code, user_id, machine_id, cleanDate, time_slot]
+      'INSERT INTO bookings (booking_code, user_id, machine_id, booking_date, time_slot, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [booking_code, user_id, machine_id, cleanDate, time_slot, 'active']
     );
 
     // 4. อัปเดตสถานะเครื่องซักผ้าเป็น booked
-    await pool.query('UPDATE machines SET status = "booked" WHERE machine_id = ?', [machine_id]);
+    await pool.query('UPDATE machines SET status = ? WHERE machine_id = ?', ['booked', machine_id]);
 
     // แจ้งเตือน Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง (Dashboard, TimeSlots, Admin)
     const io = req.app.get('socketio');
@@ -148,14 +148,14 @@ exports.cancelBooking = async (req, res) => {
 
     // 2. อัปเดตสถานะ booking เป็น cancelled โดยอิงจาก booking_code
     await pool.query(
-      'UPDATE bookings SET status = "cancelled" WHERE booking_code = ?',
-      [booking_code]
+      'UPDATE bookings SET status = ? WHERE booking_code = ?',
+      ['cancelled', booking_code]
     );
 
     // 3. ตรวจสอบว่ายังมีคิว active อื่นของเครื่องนี้อยู่อีกหรือไม่
     const [otherActive] = await pool.query(
-      'SELECT booking_id FROM bookings WHERE machine_id = ? AND status = "active"',
-      [machine_id]
+      'SELECT booking_id FROM bookings WHERE machine_id = ? AND status = ?',
+      [machine_id, 'active']
     );
 
     const newMachineStatus = otherActive.length > 0 ? 'booked' : 'available';
