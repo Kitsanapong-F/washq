@@ -3,7 +3,11 @@ const { checkAndSendBookingReminders } = require('../services/notificationSchedu
 
 // POST /api/notifications/test-email (ทดสอบการส่งอีเมล)
 exports.testEmail = async (req, res) => {
-  const email = req.body?.email || process.env.NOTIFICATION_RECIPIENT_EMAIL || '09chaisu@gmail.com';
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'กรุณาระบุ email ที่ต้องการทดสอบ' });
+  }
 
   try {
     const result = await sendTestEmail(email);

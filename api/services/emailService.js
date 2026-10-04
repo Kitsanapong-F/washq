@@ -153,7 +153,7 @@ const sendBookingReminderEmail = async (bookingData) => {
   const config = getEmailConfig();
   const transporter = createTransporter();
 
-  const recipientEmail = process.env.NOTIFICATION_RECIPIENT_EMAIL || bookingData.email || '09chaisu@gmail.com';
+  const recipientEmail = bookingData.email;
   if (!recipientEmail) {
     console.warn(`[Email Service] ไม่พบที่อยู่อีเมลของผู้ใช้สำหรับคิว ${bookingData.bookingCode}`);
     return { success: false, message: 'Recipient email missing' };
@@ -198,9 +198,8 @@ const sendBookingReminderEmail = async (bookingData) => {
  * ฟังก์ชันสำหรับทดสอบส่งอีเมล (สำหรับหน้า Admin หรือการตรวจเช็คระบบ)
  */
 const sendTestEmail = async (targetEmail) => {
-  const recipient = targetEmail || process.env.NOTIFICATION_RECIPIENT_EMAIL || '09chaisu@gmail.com';
   const testData = {
-    email: recipient,
+    email: targetEmail,
     studentName: 'ทดสอบ ระบบ',
     studentCode: '6500000000-0',
     bookingCode: 'RES-TEST',

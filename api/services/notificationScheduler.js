@@ -19,10 +19,9 @@ const getThaiCurrentDateTime = () => {
   return { dateStr, hour, minute, totalMinutes: hour * 60 + minute };
 };
 
-// ตรวจสอบและเพิ่มคอลัมน์ reminder_sent พร้อมอัปเดตอีเมลของผู้ใช้ทุกคนเป็น 09chaisu@gmail.com (Safe Migration)
+// ตรวจสอบและเพิ่มคอลัมน์ reminder_sent ในตาราง bookings อัตโนมัติ (Safe Migration)
 const ensureReminderColumnExists = async () => {
   try {
-    // 1. ตรวจสอบคอลัมน์ reminder_sent ในตาราง bookings
     const [cols] = await pool.query(
       `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
        WHERE TABLE_SCHEMA = DATABASE() 
@@ -34,20 +33,8 @@ const ensureReminderColumnExists = async () => {
       await pool.query(`ALTER TABLE bookings ADD COLUMN reminder_sent TINYINT(1) DEFAULT 0`);
       console.log(`[Notification Scheduler] 🛠️ เพิ่มคอลัมน์ 'reminder_sent' ในตาราง bookings สำเร็จ`);
     }
-
-    // 2. ปลด UNIQUE constraint ของ email ในตาราง users (ถ้ามี) เพื่อให้ทุกคนใช้อีเมลเดียวกันได้
-    try {
-      await pool.query(`ALTER TABLE users DROP INDEX email`);
-    } catch (e) {
-      // ดัชนีอาจไม่มีอยู่แล้วหรือไม่ใช่ unique
-    }
-
-    // 3. ปรับอีเมลผู้ใช้ทุกคนเป็นอีเมลสำหรับรับการแจ้งเตือน
-    const defaultNotificationEmail = process.env.NOTIFICATION_RECIPIENT_EMAIL || '09chaisu@gmail.com';
-    await pool.query(`UPDATE users SET email = ?`, [defaultNotificationEmail]);
-    console.log(`[Notification Scheduler] 📧 ตั้งค่าอีเมลแจ้งเตือนของทุกคนเป็น: ${defaultNotificationEmail}`);
   } catch (error) {
-    console.error(`[Notification Scheduler] ⚠️ ไม่สามารถตรวจสอบโครงสร้างตารางได้:`, error.message);
+    console.error(`[Notification Scheduler] ⚠️ ไม่สามารถตรวจสอบโครงสร้างตาราง bookings ได้:`, error.message);
   }
 };
 
@@ -109,9 +96,9 @@ const checkAndSendBookingReminders = async () => {
       if (isTimeToNotify) {
         console.log(`[Notification Scheduler] 🔔 ถึงเวลาของคิว ${booking.booking_code} (${booking.time_slot}) กำลังส่งอีเมลแจ้งเตือน...`);
 
-        // ส่งอีเมลแจ้งเตือน (ส่งหา 09chaisu@gmail.com สำหรับทุกคนตามที่กำหนด)
+        // ส่งอีเมลแจ้งเตือน
         const sendResult = await sendBookingReminderEmail({
-          email: process.env.NOTIFICATION_RECIPIENT_EMAIL || booking.email || '09chaisu@gmail.com',
+          email: booking.email,
           studentName: booking.student_name,
           studentCode: booking.student_code,
           bookingCode: booking.booking_code,
