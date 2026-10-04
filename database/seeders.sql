@@ -1,4 +1,5 @@
-USE washq_db;
+-- เลือกรันในฐานข้อมูลที่กำลังเชื่อมต่อ (รองรับทั้ง washq_db บน Local และ defaultdb บน Aiven Cloud)
+-- USE washq_db;
 
 -- ล้างข้อมูลเก่า
 DELETE FROM bookings;

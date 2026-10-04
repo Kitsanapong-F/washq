@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function Dashboard() {
@@ -35,15 +35,20 @@ export default function Dashboard() {
       setUser(storedUser);
 
       const machineData = await bookingService.getMachines();
-      setMachines(machineData);
+      setMachines(Array.isArray(machineData) ? machineData : []);
 
       const userId = storedUser.id || storedUser.user_id;
       if (userId) {
         const bookingData = await bookingService.getUserActiveBooking(userId);
-        setActiveBookings(Array.isArray(bookingData) ? bookingData : (bookingData ? [bookingData] : []));
+        setActiveBookings(
+          Array.isArray(bookingData)
+            ? bookingData
+            : (bookingData && typeof bookingData === 'object' && (bookingData.booking_code || bookingData.id) ? [bookingData] : [])
+        );
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setMachines([]);
     } finally {
       setLoading(false);
     }
@@ -52,8 +57,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
 
-    // สร้าง Socket Connection (เชื่อมต่อไปยัง Origin ปัจจุบันผ่าน Vite proxy หรือตาม VITE_SOCKET_URL)
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    // สร้าง Socket Connection แบบ Real-time
+    const socket = createSocket();
 
     // ดักฟัง Event จาก Socket.io แบบ Real-time
     socket.on('booking_created', () => {
@@ -139,11 +144,10 @@ export default function Dashboard() {
         console.error('Cancel booking error:', error);
         await Swal.fire({
           icon: 'error',
-          iconColor: '#ef4444',
           title: 'ไม่สามารถยกเลิกคิวได้',
-          text: error.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
-          confirmButtonColor: '#6b7280',
-          confirmButtonText: 'ปิด',
+          text: error.response?.data?.message || 'เกิดข้อผิดพลาดในการยกเลิกคิว กรุณาลองใหม่อีกครั้ง',
+          confirmButtonColor: '#ef4444',
+          confirmButtonText: 'ตกลง',
           customClass: {
             popup: 'rounded-3xl shadow-2xl p-6 font-sans',
             title: 'text-lg font-bold text-slate-800',
@@ -200,7 +204,7 @@ export default function Dashboard() {
       </div>
 
       {/* Active Bookings List (รองรับดูหลายรายการ) */}
-      {activeBookings && activeBookings.length > 0 && (
+      {Array.isArray(activeBookings) && activeBookings.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold text-slate-700">
@@ -255,7 +259,7 @@ export default function Dashboard() {
 
         {loading ? (
           <div className="text-center py-8 text-xs text-slate-400">กำลังโหลดข้อมูลเครื่องซักผ้า...</div>
-        ) : (
+        ) : Array.isArray(machines) && machines.length > 0 ? (
           <div className="space-y-3">
             {machines.map((m) => (
               <div key={m.machine_id} className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -275,6 +279,17 @@ export default function Dashboard() {
                 </button>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-sm">
+            <p className="text-sm font-semibold text-slate-700 mb-1">ไม่พบข้อมูลเครื่องซักผ้า</p>
+            <p className="text-xs text-slate-400 mb-4">อาจกำลังเชื่อมต่อกับเซิร์ฟเวอร์ กรุณากดปุ่มเพื่อลองใหม่อีกครั้ง</p>
+            <button
+              onClick={fetchDashboardData}
+              className="px-4 py-2 bg-[#8B5A2B] text-white text-xs font-semibold rounded-xl hover:bg-[#724822] transition-colors"
+            >
+              โหลดข้อมูลใหม่อีกครั้ง
+            </button>
           </div>
         )}
       </div>

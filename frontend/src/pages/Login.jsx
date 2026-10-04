@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, AlertCircle, Info } from 'lucide-react';
 import { authService } from '../services/authService';
@@ -10,6 +10,24 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // หากมี Token อยู่แล้ว นำทางเข้า Dashboard ทันที
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+      if (token && storedUser) {
+        if (storedUser.role === 'admin') {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

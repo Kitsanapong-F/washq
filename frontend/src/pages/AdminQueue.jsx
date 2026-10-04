@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, RefreshCw } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function AdminQueue() {
@@ -15,9 +15,10 @@ export default function AdminQueue() {
     setLoading(true);
     try {
       const data = await bookingService.getAllBookings();
-      setQueues(data);
+      setQueues(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setQueues([]);
     } finally {
       setLoading(false);
     }
@@ -27,7 +28,7 @@ export default function AdminQueue() {
     fetchBookings();
 
     // ดักฟังการจอง/ยกเลิกคิวแบบ Real-time
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    const socket = createSocket();
 
     socket.on('booking_created', () => {
       fetchBookings();
@@ -108,26 +109,23 @@ export default function AdminQueue() {
         await Swal.fire({
           icon: 'success',
           iconColor: '#10b981',
-          title: 'ยกเลิกคิวสำเร็จ!',
-          text: `รายการจองคิว ${bookingCode} ถูกยกเลิกเรียบร้อยแล้ว`,
-          confirmButtonColor: '#10b981',
-          confirmButtonText: 'ตกลง',
-          timer: 2200,
-          timerProgressBar: true,
+          title: 'ยกเลิกสำเร็จ!',
+          text: `ยกเลิกคิวรหัส ${bookingCode} สำเร็จแล้ว`,
+          timer: 1800,
+          showConfirmButton: false,
           customClass: {
             popup: 'rounded-3xl shadow-2xl p-6 font-sans',
             title: 'text-lg font-bold text-slate-800',
-            confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm',
           }
         });
         fetchBookings();
-      } catch (err) {
-        console.error('Cancel booking error:', err);
+      } catch (error) {
+        console.error('Cancel booking error:', error);
         await Swal.fire({
           icon: 'error',
           iconColor: '#ef4444',
-          title: 'ไม่สามารถยกเลิกคิวได้',
-          text: err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+          title: 'เกิดข้อผิดพลาด',
+          text: error.response?.data?.message || 'เกิดข้อผิดพลาดในการยกเลิกคิว',
           confirmButtonColor: '#6b7280',
           confirmButtonText: 'ปิด',
           customClass: {
@@ -146,28 +144,33 @@ export default function AdminQueue() {
     navigate('/login');
   };
 
-  const filteredQueues = queues.filter(q =>
-    q.student_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.machine_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.booking_code?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const renderStatusBadge = (status) => {
     switch (status) {
       case 'active':
-        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">รอใช้งาน (Active)</span>;
-      case 'cancelled':
-        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold">ยกเลิกแล้ว</span>;
+        return <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">รอใช้งาน</span>;
       case 'completed':
-        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">เสร็จสิ้น</span>;
+        return <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold">เสร็จสิ้น</span>;
+      case 'cancelled':
+        return <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">ยกเลิกแล้ว</span>;
       default:
-        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">{status}</span>;
+        return <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold">{status}</span>;
     }
   };
 
+  const safeQueues = Array.isArray(queues) ? queues : [];
+  const filteredQueues = safeQueues.filter((q) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (q.booking_code && q.booking_code.toLowerCase().includes(term)) ||
+      (q.student_code && q.student_code.toLowerCase().includes(term)) ||
+      (q.name && q.name.toLowerCase().includes(term)) ||
+      (q.machine_name && q.machine_name.toLowerCase().includes(term))
+    );
+  });
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-6">
+      {/* Top Bar */}
       <div className="bg-[#8B5A2B] text-white p-4 rounded-2xl flex flex-wrap justify-between items-center mb-6 shadow-md">
         <div>
           <h1 className="text-sm font-bold">RMUTL Laundry Admin</h1>

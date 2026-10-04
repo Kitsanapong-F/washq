@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, LogOut } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import io from 'socket.io-client';
+import { createSocket } from '../services/socket';
 import Swal from 'sweetalert2';
 
 export default function AdminDashboard() {
@@ -14,9 +14,10 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const data = await bookingService.getMachines();
-      setMachines(data);
+      setMachines(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Fetch error:', error);
+      setMachines([]);
     } finally {
       setLoading(false);
     }
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
     fetchMachines();
 
     // ดักฟังการอัปเดตสถานะแบบ Real-time โดยไม่ต้องรีเฟรชหน้าจอ
-    const socket = io(import.meta.env.VITE_SOCKET_URL || undefined);
+    const socket = createSocket();
 
     socket.on('machine_status_updated', () => {
       fetchMachines();
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
   }, []);
 
   const handleStatusChange = (id, newStatus) => {
-    setMachines(machines.map(m => m.machine_id === id ? { ...m, status: newStatus } : m));
+    setMachines((prev) => (Array.isArray(prev) ? prev.map(m => m.machine_id === id ? { ...m, status: newStatus } : m) : []));
   };
 
   const handleSaveStatus = async (id, status) => {
@@ -92,6 +93,8 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
+  const safeMachines = Array.isArray(machines) ? machines : [];
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-6">
       {/* Top Bar */}
@@ -105,7 +108,7 @@ export default function AdminDashboard() {
           <button onClick={() => navigate('/admin/queue')} className="px-3 py-1 bg-amber-900/40 text-xs text-amber-100 rounded-lg hover:bg-amber-800">
             รายการคิวจองทั้งหมด
           </button>
-          <button onClick={handleLogout} className="p-1.5 bg-white/10 rounded-lg ml-2 hover:bg-rose-600 transition-colors">
+          <button onClick={handleLogout} className="p-1.5 bg-white/10 rounded-lg ml-2 hover:bg-rose-600 transition-colors" title="ออกจากระบบ">
             <LogOut className="w-4 h-4 text-white" />
           </button>
         </div>
@@ -115,19 +118,19 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] text-slate-500 font-semibold">จำนวนเครื่องทั้งหมด</p>
-          <h3 className="text-xl font-bold text-slate-800">{machines.length} เครื่อง</h3>
+          <h3 className="text-xl font-bold text-slate-800">{safeMachines.length} เครื่อง</h3>
         </div>
         <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] text-emerald-600 font-semibold">สถานะว่าง</p>
-          <h3 className="text-xl font-bold text-emerald-600">{machines.filter(m => m.status === 'available').length} เครื่อง</h3>
+          <h3 className="text-xl font-bold text-emerald-600">{safeMachines.filter(m => m.status === 'available').length} เครื่อง</h3>
         </div>
         <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] text-amber-600 font-semibold">ถูกจองแล้ว/กำลังใช้งาน</p>
-          <h3 className="text-xl font-bold text-amber-600">{machines.filter(m => m.status === 'in_use' || m.status === 'booked').length} เครื่อง</h3>
+          <h3 className="text-xl font-bold text-amber-600">{safeMachines.filter(m => m.status === 'in_use' || m.status === 'booked').length} เครื่อง</h3>
         </div>
         <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] text-rose-600 font-semibold">ชำรุด/ปิดปรับปรุง</p>
-          <h3 className="text-xl font-bold text-rose-600">{machines.filter(m => m.status === 'maintenance').length} เครื่อง</h3>
+          <h3 className="text-xl font-bold text-rose-600">{safeMachines.filter(m => m.status === 'maintenance').length} เครื่อง</h3>
         </div>
       </div>
 
@@ -141,9 +144,9 @@ export default function AdminDashboard() {
 
       {loading ? (
         <div className="text-center py-8 text-xs text-slate-400">กำลังโหลดรายการเครื่อง...</div>
-      ) : (
+      ) : safeMachines.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {machines.map((m) => (
+          {safeMachines.map((m) => (
             <div key={m.machine_id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start mb-1">
@@ -173,6 +176,16 @@ export default function AdminDashboard() {
               </button>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
+          <p className="text-sm font-semibold text-slate-700 mb-2">ไม่พบข้อมูลเครื่องซักผ้า</p>
+          <button
+            onClick={fetchMachines}
+            className="px-4 py-2 bg-[#8B5A2B] text-white text-xs font-semibold rounded-xl hover:bg-[#724822] transition-colors"
+          >
+            ลองใหม่อีกครั้ง
+          </button>
         </div>
       )}
     </div>
