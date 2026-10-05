@@ -5,11 +5,13 @@
 [![Production Status](https://img.shields.io/badge/Production-Live%20on%20Render-blue)](https://washq-1.onrender.com)
 [![MySQL](https://img.shields.io/badge/Database-Aiven%20Cloud%20MySQL%208.4-informational)](https://washq-n9fj.onrender.com/health)
 
-### 🔗 ลิงก์ระบบบน Production (Live Cloud URLs)
+### 🔗 ลิงก์ระบบและเอกสารสำคัญ (Important Links & Documentation)
 - 🌐 **Frontend Application (สำหรับใช้งานจริง):** [https://washq-1.onrender.com](https://washq-1.onrender.com)
 - ⚙️ **Backend REST API:** [https://washq-n9fj.onrender.com](https://washq-n9fj.onrender.com)
 - 🩺 **API Health Check & Database Status:** [https://washq-n9fj.onrender.com/health](https://washq-n9fj.onrender.com/health)
-- 📄 **รายงานผลการทดสอบฉบับเต็ม:** [TESTING.md](./TESTING.md)
+- 📄 **รายงานผลการทดสอบฉบับเต็ม (Testing Report):** [TESTING.md](./TESTING.md)
+- 📑 **เอกสารข้อกำหนด API (API Contract):** [API_CONTRACT.md](./API_CONTRACT.md)
+- 📦 **เอกสารส่งมอบงานระบบ (Project Handover):** [HANDOVER.md](./HANDOVER.md)
 
 ---
 
@@ -58,6 +60,8 @@ washq/
 ├── .env.example
 ├── .gitignore
 ├── TESTING.md                      # รายงานผลการทดสอบระบบและ Debugging ฉบับสมบูรณ์ (Sprint 3)
+├── API_CONTRACT.md                 # ข้อกำหนดและข้อตกลง API Contract & Socket.io Events
+├── HANDOVER.md                     # เอกสารส่งมอบงานระบบ (Project Handover Document)
 └── README.md                       # คู่มือการติดตั้งและใช้งานโปรเจกต์
 ```
 
