@@ -5,7 +5,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:init": "node scripts/init-db.js"
+    "db:init": "node scripts/init-db.js",
+    "test": "jest --runInBand --testTimeout=20000 --detectOpenHandles --forceExit",
+    "test:unit": "jest tests/unit --detectOpenHandles --forceExit",
+    "test:integration": "jest tests/integration --runInBand --testTimeout=20000 --detectOpenHandles --forceExit",
+    "test:concurrent": "node scripts/test-concurrent-booking.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -19,6 +23,8 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "jest": "^30.5.2",
+    "nodemon": "^3.1.0",
+    "supertest": "^7.3.1"
   }
 }
