@@ -61,28 +61,28 @@ const HOST = process.env.HOST || '0.0.0.0';
 module.exports = { app, server, io };
 
 if (require.main === module) {
-  server.listen(PORT, HOST, () => {
-    console.log(`🚀 WashQ API Server running at:`);
-    console.log(`   - Local:   http://localhost:${PORT}`);
-    try {
-      const os = require('os');
-      const interfaces = os.networkInterfaces();
-      for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-          if (iface.family === 'IPv4' && !iface.internal) {
-            console.log(`   - Network: http://${iface.address}:${PORT}`);
-          }
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 WashQ API Server running at:`);
+  console.log(`   - Local:   http://localhost:${PORT}`);
+  try {
+    const os = require('os');
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          console.log(`   - Network: http://${iface.address}:${PORT}`);
         }
       }
-    } catch (err) {
-      // Ignore network interface discovery errors
     }
+  } catch (err) {
+    // Ignore network interface discovery errors
+  }
 
-    // เริ่มต้นระบบตรวจสอบและส่งอีเมลแจ้งเตือนเมื่อถึงเวลา
-    startNotificationScheduler().catch((err) => {
-      console.error('❌ ไม่สามารถเริ่มระบบ Notification Scheduler ได้:', err.message);
-    });
+  // เริ่มต้นระบบตรวจสอบและส่งอีเมลแจ้งเตือนเมื่อถึงเวลา
+  startNotificationScheduler().catch((err) => {
+    console.error('❌ ไม่สามารถเริ่มระบบ Notification Scheduler ได้:', err.message);
   });
+});
 }
 
 
