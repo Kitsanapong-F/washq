@@ -58,40 +58,63 @@ exports.createBooking = async (req, res) => {
       }
     }
 
-    // 1. ตรวจสอบว่ารอบเวลานี้ในวันที่กำหนด มีคนจองไปแล้วหรือยัง
-    const [existing] = await pool.query(
-      'SELECT * FROM bookings WHERE machine_id = ? AND DATE(booking_date) = ? AND time_slot = ? AND status = ?',
-      [machine_id, cleanDate, time_slot, 'active']
-    );
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    if (existing.length > 0) {
-      return res.status(400).json({ message: 'ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกรอบอื่น' });
+      // ล็อกแถวเครื่องซักผ้าเพื่อป้องกัน Race Condition (Zero Double-Booking)
+      const [machines] = await conn.query('SELECT machine_id FROM machines WHERE machine_id = ? FOR UPDATE', [machine_id]);
+      if (machines.length === 0) {
+        await conn.rollback();
+        conn.release();
+        return res.status(404).json({ message: 'ไม่พบเครื่องซักผ้านี้' });
+      }
+
+      // 1. ตรวจสอบว่ารอบเวลานี้ในวันที่กำหนด มีคนจองไปแล้วหรือยัง
+      const [existing] = await conn.query(
+        'SELECT * FROM bookings WHERE machine_id = ? AND DATE(booking_date) = ? AND time_slot = ? AND status = ?',
+        [machine_id, cleanDate, time_slot, 'active']
+      );
+
+      if (existing.length > 0) {
+        await conn.rollback();
+        conn.release();
+        return res.status(400).json({ message: 'ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกรอบอื่น' });
+      }
+
+      // 2. สุ่มรหัสการจอง เช่น RES-1234
+      const booking_code = `RES-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // 3. บันทึกข้อมูลการจองลงตาราง bookings
+      await conn.query(
+        'INSERT INTO bookings (booking_code, user_id, machine_id, booking_date, time_slot, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [booking_code, user_id, machine_id, cleanDate, time_slot, 'active']
+      );
+
+      // 4. อัปเดตสถานะเครื่องซักผ้าเป็น booked
+      await conn.query('UPDATE machines SET status = ? WHERE machine_id = ?', ['booked', machine_id]);
+
+      await conn.commit();
+      conn.release();
+
+      // แจ้งเตือน Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง (Dashboard, TimeSlots, Admin)
+      const io = req.app.get('socketio');
+      if (io) {
+        io.emit('booking_created', { machine_id: Number(machine_id), time_slot, booking_date: cleanDate, booking_code });
+        io.emit('machine_status_updated', { machine_id: Number(machine_id), status: 'booked' });
+      }
+
+      return res.status(201).json({
+        message: 'จองคิวสำเร็จ',
+        booking_code,
+        details: { machine_id: Number(machine_id), booking_date: cleanDate, time_slot }
+      });
+
+    } catch (txError) {
+      await conn.rollback();
+      conn.release();
+      throw txError;
     }
-
-    // 2. สุ่มรหัสการจอง เช่น RES-1234
-    const booking_code = `RES-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    // 3. บันทึกข้อมูลการจองลงตาราง bookings
-    await pool.query(
-      'INSERT INTO bookings (booking_code, user_id, machine_id, booking_date, time_slot, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [booking_code, user_id, machine_id, cleanDate, time_slot, 'active']
-    );
-
-    // 4. อัปเดตสถานะเครื่องซักผ้าเป็น booked
-    await pool.query('UPDATE machines SET status = ? WHERE machine_id = ?', ['booked', machine_id]);
-
-    // แจ้งเตือน Real-time ผ่าน Socket.io ทั้ง 2 ฝั่ง (Dashboard, TimeSlots, Admin)
-    const io = req.app.get('socketio');
-    if (io) {
-      io.emit('booking_created', { machine_id: Number(machine_id), time_slot, booking_date: cleanDate, booking_code });
-      io.emit('machine_status_updated', { machine_id: Number(machine_id), status: 'booked' });
-    }
-
-    res.status(201).json({
-      message: 'จองคิวสำเร็จ',
-      booking_code,
-      details: { machine_id: Number(machine_id), booking_date: cleanDate, time_slot }
-    });
 
   } catch (error) {
     console.error('Booking Error:', error);
