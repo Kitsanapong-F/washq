@@ -57,6 +57,10 @@ const { startNotificationScheduler } = require('./services/notificationScheduler
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Export app and server for testing
+module.exports = { app, server, io };
+
+if (require.main === module) {
 server.listen(PORT, HOST, () => {
   console.log(`🚀 WashQ API Server running at:`);
   console.log(`   - Local:   http://localhost:${PORT}`);
@@ -79,5 +83,6 @@ server.listen(PORT, HOST, () => {
     console.error('❌ ไม่สามารถเริ่มระบบ Notification Scheduler ได้:', err.message);
   });
 });
+}
 
 
