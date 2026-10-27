@@ -13,8 +13,18 @@ const http = require('http');
 const pool = require('../config/db');
 const { app, server } = require('../server');
 
+// คำนวณวันที่ในอนาคตแบบไดนามิก (วันนี้ + 6 วัน) ให้อยู่ในกรอบ 15 วันเสมอไม่ว่าจะรันวันไหน
+const getDynamicFutureDate = (daysAhead = 6) => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const TEST_MACHINE_ID = 3;
-const TEST_DATE = '2026-10-19';
+const TEST_DATE = getDynamicFutureDate(6);
 const TEST_SLOT = '16:00 - 17:00 น.';
 const NUM_CONCURRENT_USERS = 5;
 

@@ -129,7 +129,17 @@ describe('Integration Tests: WashQ API Full System', () => {
   });
 
   describe('3. Booking Lifecycle Endpoints (/api/bookings)', () => {
-    const futureDate = '2026-10-18'; // วันที่ในอนาคต (ภายใน 15 วัน)
+    // คำนวณวันที่ในอนาคตแบบไดนามิก (วันนี้ + 5 วัน) เพื่อให้อยู่ในกรอบ 15 วันเสมอไม่ว่าจะรันวันไหน
+    const getDynamicFutureDate = (daysAhead = 5) => {
+      const d = new Date();
+      d.setDate(d.getDate() + daysAhead);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const futureDate = getDynamicFutureDate(5);
     const testSlot = '11:00 - 12:00 น.';
 
     it('IT-BOOK-01: should create a new booking successfully (201)', async () => {
