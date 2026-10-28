@@ -64,10 +64,11 @@
 | **Testing Suite** | ชุดทดสอบอัตโนมัติ (Unit, Integration, Concurrency) | โฟลเดอร์ `api/tests/`, `api/scripts/test-concurrent-booking.js` |
 | **Containerization**| ไฟล์คอนฟิก Docker & Docker Compose | `docker-compose.yml`, `api/Dockerfile`, `frontend/Dockerfile` |
 | **Production App** | ลิงก์ระบบบนคลาวด์พร้อมใช้งาน | Frontend: `https://washq-1.onrender.com`<br>Backend: `https://washq-n9fj.onrender.com` |
-| **Documentation** | คู่มือการติดตั้งและใช้งานระบบฉบับหลัก | [`README.md`](./README.md) |
+| **Documentation** | คู่มือการติดตั้งและใช้งานระบบฉบับหลัก | [`README.md`](../README.md) |
 | **Documentation** | รายงานผลการทดสอบระบบและ Debugging (Sprint 3) | [`TESTING.md`](./TESTING.md) |
 | **Documentation** | เอกสารข้อกำหนดและข้อตกลง API Contract | [`API_CONTRACT.md`](./API_CONTRACT.md) |
 | **Documentation** | เอกสารส่งมอบงานระบบฉบับนี้ | [`HANDOVER.md`](./HANDOVER.md) |
+| **Documentation** | เอกสารข้อกำหนดความต้องการระบบ (SRS) | [`SRS - ระบบจองเครื่องซักผ้าอัตโนมัติ (Web Application).pdf`](./SRS%20-%20ระบบจองเครื่องซักผ้าอัตโนมัติ%20(Web%20Application).pdf) |
 
 ---
 

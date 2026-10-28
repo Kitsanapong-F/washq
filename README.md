@@ -1,7 +1,7 @@
 # WashQ - Smart Laundry Queue Reservation System
 ระบบจองคิวเครื่องซักผ้าอัจฉริยะสำหรับหอพักนักศึกษา (WashQ)
 
-[![Testing Status](https://img.shields.io/badge/Testing%20Sprint%203-33%2F33%20Passed%20(100%25)-success)](./TESTING.md)
+[![Testing Status](https://img.shields.io/badge/Testing%20Sprint%203-33%2F33%20Passed%20(100%25)-success)](./docs/TESTING.md)
 [![Production Status](https://img.shields.io/badge/Production-Live%20on%20Render-blue)](https://washq-1.onrender.com)
 [![MySQL](https://img.shields.io/badge/Database-Aiven%20Cloud%20MySQL%208.4-informational)](https://washq-n9fj.onrender.com/health)
 
@@ -9,9 +9,11 @@
 - 🌐 **Frontend Application (สำหรับใช้งานจริง):** [https://washq-1.onrender.com](https://washq-1.onrender.com)
 - ⚙️ **Backend REST API:** [https://washq-n9fj.onrender.com](https://washq-n9fj.onrender.com)
 - 🩺 **API Health Check & Database Status:** [https://washq-n9fj.onrender.com/health](https://washq-n9fj.onrender.com/health)
-- 📄 **รายงานผลการทดสอบฉบับเต็ม (Testing Report):** [TESTING.md](./TESTING.md)
-- 📑 **เอกสารข้อกำหนด API (API Contract):** [API_CONTRACT.md](./API_CONTRACT.md)
-- 📦 **เอกสารส่งมอบงานระบบ (Project Handover):** [HANDOVER.md](./HANDOVER.md)
+- 📁 **โฟลเดอร์เอกสารทั้งหมด (Docs Folder):** [docs/](./docs/)
+  - 📄 **รายงานผลการทดสอบฉบับเต็ม (Testing Report):** [TESTING.md](./docs/TESTING.md)
+  - 📑 **เอกสารข้อกำหนด API (API Contract):** [API_CONTRACT.md](./docs/API_CONTRACT.md)
+  - 📦 **เอกสารส่งมอบงานระบบ (Project Handover):** [HANDOVER.md](./docs/HANDOVER.md)
+  - 📚 **เอกสารวิเคราะห์ความต้องการระบบ (SRS):** [SRS.pdf](./docs/SRS%20-%20ระบบจองเครื่องซักผ้าอัตโนมัติ%20(Web%20Application).pdf)
 
 ---
 
@@ -24,6 +26,11 @@ washq/
 ├── database/                       # จัดการฐานข้อมูล (Sprint 1)
 │   ├── schema.sql                  # DDL สร้างตาราง users, machines, bookings
 │   └── seeders.sql                 # Mock data สำหรับทดสอบระบบ
+├── docs/                           # ศูนย์รวมเอกสารโครงการ (Documentation Folder)
+│   ├── API_CONTRACT.md             # ข้อกำหนดและข้อตกลง API Contract & Socket.io Events
+│   ├── HANDOVER.md                 # เอกสารส่งมอบงานระบบ (Project Handover Document)
+│   ├── TESTING.md                  # รายงานผลการทดสอบระบบและ Debugging ฉบับสมบูรณ์ (Sprint 3)
+│   └── SRS - ระบบจองเครื่องซักผ้าอัตโนมัติ (Web Application).pdf # เอกสารข้อกำหนดความต้องการระบบ
 ├── frontend/                       # ฝั่งผู้ใช้งาน / Admin UI (React + Vite)
 │   ├── public/                     # Static assets (Favicon, logos)
 │   ├── src/
@@ -44,6 +51,7 @@ washq/
 │   ├── routes/                     # API Endpoints (/api/auth, /api/machines, etc.)
 │   ├── scripts/
 │   │   ├── init-db.js              # Script ติดตั้งและ Seed ฐานข้อมูลอัตโนมัติ
+│   │   ├── send-real-email.js      # Script ทดสอบการส่งอีเมลจริงผ่าน SMTP
 │   │   └── test-concurrent-booking.js # Script ทดสอบการจองพร้อมกัน (Race Condition Test)
 │   ├── tests/                      # ชุดทดสอบอัตโนมัติ (Sprint 3)
 │   │   ├── unit/                   # Unit Tests (auth.test.js, validation.test.js)
@@ -59,9 +67,6 @@ washq/
 ├── package.json                    # Workspace Scripts สะดวกสำหรับทีม
 ├── .env.example
 ├── .gitignore
-├── TESTING.md                      # รายงานผลการทดสอบระบบและ Debugging ฉบับสมบูรณ์ (Sprint 3)
-├── API_CONTRACT.md                 # ข้อกำหนดและข้อตกลง API Contract & Socket.io Events
-├── HANDOVER.md                     # เอกสารส่งมอบงานระบบ (Project Handover Document)
 └── README.md                       # คู่มือการติดตั้งและใช้งานโปรเจกต์
 ```
 
@@ -175,7 +180,7 @@ npx localtunnel --port 3000
 
 ## 🧪 รายงานผลการทดสอบระบบและแก้ไขข้อผิดพลาด (Sprint 3: Testing & Debugging Report)
 
-> สำหรับรายงานผลการทดสอบฉบับเต็ม ตาราง Test Cases ละเอียด และ Raw Execution Logs สามารถดูได้ที่ [TESTING.md](./TESTING.md)
+> สำหรับรายงานผลการทดสอบฉบับเต็ม ตาราง Test Cases ละเอียด และ Raw Execution Logs สามารถดูได้ที่ [TESTING.md](./docs/TESTING.md)
 
 ### 1. คำสั่งสำหรับรันชุดทดสอบ (How to Run Tests)
 
